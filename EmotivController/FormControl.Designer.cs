@@ -50,7 +50,7 @@
             this.flowLayoutPanel7 = new System.Windows.Forms.FlowLayoutPanel();
             this.btKanan = new System.Windows.Forms.Button();
             this.btfromZero = new System.Windows.Forms.Button();
-            this.pbCatch = new System.Windows.Forms.ProgressBar();
+            this.progressBar = new System.Windows.Forms.ProgressBar();
             this.flowLayoutPanel2 = new System.Windows.Forms.FlowLayoutPanel();
             this.btAmbilData = new System.Windows.Forms.Button();
             this.btTraining = new System.Windows.Forms.Button();
@@ -256,12 +256,12 @@
             this.btfromZero.Text = "Ambil Data dan Training?";
             this.btfromZero.UseVisualStyleBackColor = true;
             // 
-            // pbCatch
+            // progressBar
             // 
-            this.pbCatch.Location = new System.Drawing.Point(12, 446);
-            this.pbCatch.Name = "pbCatch";
-            this.pbCatch.Size = new System.Drawing.Size(771, 23);
-            this.pbCatch.TabIndex = 6;
+            this.progressBar.Location = new System.Drawing.Point(12, 446);
+            this.progressBar.Name = "progressBar";
+            this.progressBar.Size = new System.Drawing.Size(771, 23);
+            this.progressBar.TabIndex = 6;
             // 
             // flowLayoutPanel2
             // 
@@ -338,7 +338,7 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 512);
-            this.Controls.Add(this.pbCatch);
+            this.Controls.Add(this.progressBar);
             this.Controls.Add(this.tableLayoutPanel1);
             this.Name = "FormControl";
             this.Text = "FormControl";
@@ -380,7 +380,7 @@
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel7;
         private System.Windows.Forms.Button btKanan;
         private System.Windows.Forms.Button btfromZero;
-        private System.Windows.Forms.ProgressBar pbCatch;
+        private System.Windows.Forms.ProgressBar progressBar;
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel2;
         private System.Windows.Forms.Button btAmbilData;
         private System.Windows.Forms.Button btTraining;
