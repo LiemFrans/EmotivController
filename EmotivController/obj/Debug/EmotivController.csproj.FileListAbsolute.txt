@@ -2,7 +2,6 @@ C:\Users\Frans\Documents\GitHub\EmotivController\EmotivController\bin\Debug\Emot
 C:\Users\Frans\Documents\GitHub\EmotivController\EmotivController\bin\Debug\EmotivController.exe
 C:\Users\Frans\Documents\GitHub\EmotivController\EmotivController\bin\Debug\EmotivController.pdb
 C:\Users\Frans\Documents\GitHub\EmotivController\EmotivController\obj\Debug\EmotivController.csprojAssemblyReference.cache
-C:\Users\Frans\Documents\GitHub\EmotivController\EmotivController\obj\Debug\EmotivController.FormControl.resources
 C:\Users\Frans\Documents\GitHub\EmotivController\EmotivController\obj\Debug\EmotivController.Properties.Resources.resources
 C:\Users\Frans\Documents\GitHub\EmotivController\EmotivController\obj\Debug\EmotivController.csproj.GenerateResource.cache
 C:\Users\Frans\Documents\GitHub\EmotivController\EmotivController\obj\Debug\EmotivController.csproj.CoreCompileInputs.cache

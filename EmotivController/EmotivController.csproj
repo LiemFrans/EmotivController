@@ -55,12 +55,6 @@
     <Reference Include="WindowsFormsIntegration" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="FormControl.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="FormControl.Designer.cs">
-      <DependentUpon>FormControl.cs</DependentUpon>
-    </Compile>
     <Compile Include="FormNavigation.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -71,9 +65,6 @@
     <Compile Include="Model\SensorModel.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <EmbeddedResource Include="FormControl.resx">
-      <DependentUpon>FormControl.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="FormNavigation.resx">
       <DependentUpon>FormNavigation.cs</DependentUpon>
     </EmbeddedResource>

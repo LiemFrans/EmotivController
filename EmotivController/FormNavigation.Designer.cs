@@ -297,6 +297,7 @@
             // 
             // btAmbilDataLagi
             // 
+            this.btAmbilDataLagi.Enabled = false;
             this.btAmbilDataLagi.Location = new System.Drawing.Point(3, 116);
             this.btAmbilDataLagi.Name = "btAmbilDataLagi";
             this.btAmbilDataLagi.Size = new System.Drawing.Size(249, 23);

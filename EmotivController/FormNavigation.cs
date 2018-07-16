@@ -25,23 +25,25 @@ namespace EmotivController
         private string old_data = "";
         private string ipAddress = "127.0.0.1";
         private string selectedArrow = "kiri";
-        private List<float> _dataAF3 = new List<float>();
-        private List<float> _dataAF4 = new List<float>();
-        private List<float> _dataF7 = new List<float>();
-        private List<float> _dataF8 = new List<float>();
-        private List<float> _dataF3 = new List<float>();
-        private List<float> _dataF4 = new List<float>();
-        private List<float> _dataFC5 = new List<float>();
-        private List<float> _dataFC6 = new List<float>();
+        private List<double> _dataAF3 = new List<double>();
+        private List<double> _dataAF4 = new List<double>();
+        private List<double> _dataF7 = new List<double>();
+        private List<double> _dataF8 = new List<double>();
+        private List<double> _dataF3 = new List<double>();
+        private List<double> _dataF4 = new List<double>();
+        private List<double> _dataFC5 = new List<double>();
+        private List<double> _dataFC6 = new List<double>();
         private static int _frekuensiSampling = 128;
         private static int _second = 5;
         private static int _jumlahData = _frekuensiSampling * _second;
         private Stopwatch watch;
+
         public FormNavigation()
         {
             InitializeComponent();
             serverStart.RunWorkerAsync();
         }
+
         private void btConnect_Click(object sender, EventArgs e)
         {
             if (ws == null || !ws.IsAlive)
@@ -85,15 +87,21 @@ namespace EmotivController
                 }
 
             }
-            else if (watch.Elapsed.Seconds==5)
+            else if (watch.Elapsed.Seconds>=5&&_dataAF3.Count==_jumlahData)
             {
-                ws.Close();
+                //ws.Close();
+                ws.Send("STOP");
                 watch.Stop();
-                Console.WriteLine(watch.Elapsed.Seconds);
-                Console.WriteLine(_dataAF3.Count());
-                Console.WriteLine(_dataAF4.Count());
-                Console.WriteLine(_dataF3.Count());
-                Console.WriteLine(_dataF4.Count());
+                isRunning = false;
+                string message = "Done";
+                string caption = "Done Capture Signal";
+                MessageBoxButtons buttons = MessageBoxButtons.OK;
+                DialogResult result;
+                result = MessageBox.Show(message, caption, buttons);
+                if (result == System.Windows.Forms.DialogResult.Yes)
+                {
+
+                }
             }
         }
 
@@ -125,16 +133,6 @@ namespace EmotivController
             }
         }
                 
-        private void btfromZero_Click(object sender, EventArgs e)
-        {
-            btKiri.Enabled = true;
-        }
-
-        private void btLangsungTraining_Click(object sender, EventArgs e)
-        {
-            btTraining.Enabled = true;
-        }
-
         //private void initializedList()
         //{
         //    _dataFC5 = new List<float>();
@@ -169,9 +167,18 @@ namespace EmotivController
             if (ws.IsAlive) { 
                 ws.Connect();
             }
-            progressBar.Maximum = _jumlahData;
             watch.Start();
             transportSignal.RunWorkerAsync();
+        }
+
+        private void btfromZero_Click(object sender, EventArgs e)
+        {
+            btKiri.Enabled = true;
+        }
+
+        private void btLangsungTraining_Click(object sender, EventArgs e)
+        {
+            btTraining.Enabled = true;
         }
 
         //serverStart DO WORK
@@ -191,37 +198,37 @@ namespace EmotivController
 
         //Preprocessing
 
-        private double[] DFT(double[] signal)
+        private double[] DFT(double[] signal, int jumlahData)
         {
-            double[] _re = new double[_jumlahData];
-            double[] _im = new double[_jumlahData];
-            double[] _hasilKuadrat = new double[_jumlahData];
-            double[] _dft = new double[_jumlahData];
-            Parallel.For(0, _jumlahData, i =>
+            double[] _re = new double[jumlahData];
+            double[] _im = new double[jumlahData];
+            double[] _hasilKuadrat = new double[jumlahData];
+            double[] _dft = new double[jumlahData];
+            Parallel.For(0, jumlahData, i =>
             {
                 _re[i] = 0;
                 _im[i] = 0;
-                for(int j = 0; j < _jumlahData; i++)
+                for(int j = 0; j < jumlahData; i++)
                 {
-                    _re[i] = _re[i] + signal[j] * Math.Cos(2 * Math.PI * j * i) / _jumlahData;
-                    _im[j] = _im[j] - signal[j] * Math.Sin(2 * Math.PI * j * i) / _jumlahData;
+                    _re[i] = _re[i] + signal[j] * Math.Cos(2 * Math.PI * j * i) / jumlahData;
+                    _im[j] = _im[j] - signal[j] * Math.Sin(2 * Math.PI * j * i) / jumlahData;
                 }
                 _hasilKuadrat[i] = Math.Sqrt(_re[i]) + Math.Sqrt(_im[i]);
-                _dft[i] = Math.Sqrt(_hasilKuadrat[i]) / _jumlahData;
+                _dft[i] = Math.Sqrt(_hasilKuadrat[i]) / jumlahData;
             });
             return _dft;
         }
 
         double _frequencyCutOff = 0.7;
 
-        private double[] filterBPFOrde4(double[] signal)
+        private double[] filterBPFOrde4(double[] signal, int jumlahData)
         {
             double r = 0;
             double theta = 2 * Math.PI * (_frequencyCutOff / _frekuensiSampling);
-            double[] bpfOrde4 = new double[_jumlahData];
+            double[] bpfOrde4 = new double[jumlahData];
             double gain = ((1 - r) * Math.Sqrt(1 - 2 * r * Math.Cos(2 * theta) + r * r)) / 4 * Math.Abs(Math.Sin(theta));
             //for (int i = 0; i < _jumlahData; i++)
-            Parallel.For(0, _jumlahData, i =>
+            Parallel.For(0, jumlahData, i =>
             {
                     switch (i)
                     {
@@ -254,13 +261,13 @@ namespace EmotivController
             return bpfOrde4;
         }
 
-        private double[] filterBPFOrde6(double[] signal)
+        private double[] filterBPFOrde6(double[] signal, int jumlahData)
         {
             double r = 0;
             double theta = 2 * Math.PI * _frequencyCutOff * _frekuensiSampling;
-            double[] bpfOrde6 = new double[_jumlahData];
+            double[] bpfOrde6 = new double[jumlahData];
             //for (int i = 0; i <_jumlahData; i++)
-            Parallel.For(0, _jumlahData, i =>
+            Parallel.For(0, jumlahData, i =>
             {
                 switch (i)
                 {
@@ -290,13 +297,14 @@ namespace EmotivController
             return bpfOrde6;
         }
 
-        private double[] filterBSF(double[] signal)//notch
+        private double[] filterBSF(double[] signal, int jumlahData)//notch
         {
             double r = 0;
             double theta = 2 * Math.PI * _frequencyCutOff * _frekuensiSampling;
             double gain = (1 - 2 * r * Math.Cos(theta) + r * r) / (2 - 2 * Math.Cos(theta));
-            double[] bsf = new double[_jumlahData];
-            for (int i = 0; i < _jumlahData; i++)
+            double[] bsf = new double[jumlahData];
+            //for (int i = 0; i < _jumlahData; i++)
+            Parallel.For(0, jumlahData, i =>
             {
                 switch (i)
                 {
@@ -310,8 +318,41 @@ namespace EmotivController
                         bsf[i] = 2 * r * Math.Cos(theta) * bsf[i - 1] - (r * r * bsf[i - 2]) + (signal[i] - (2 * Math.Cos(theta) * signal[i - 1]) + signal[i - 2]);
                         break;
                 }
-            }
+            });
             return bsf;
+        }
+
+        private void preprocessingSignalTraining()
+        {
+            double[][] BPFOrde6 = new double[8][];
+            double[][] BSF = new double[8][];
+            double[][] vDFT = new double[8][];
+
+            BPFOrde6[0] = filterBPFOrde6(_dataAF3.ToArray(),_jumlahData);
+            BPFOrde6[1] = filterBPFOrde6(_dataAF4.ToArray(),_jumlahData);
+            BPFOrde6[2] = filterBPFOrde6(_dataF3.ToArray(),_jumlahData);
+            BPFOrde6[3] = filterBPFOrde6(_dataF4.ToArray(),_jumlahData);
+            BPFOrde6[4] = filterBPFOrde6(_dataF7.ToArray(),_jumlahData);
+            BPFOrde6[5] = filterBPFOrde6(_dataF8.ToArray(),_jumlahData);
+            BPFOrde6[6] = filterBPFOrde6(_dataFC5.ToArray(),_jumlahData);
+            BPFOrde6[7] = filterBPFOrde6(_dataFC6.ToArray(),_jumlahData);
+
+            Parallel.For(0, 8, i =>
+            {
+                BSF[i] = filterBSF(BPFOrde6[i],_jumlahData);
+            });
+
+            Parallel.For(0, 8, i =>
+            {
+                vDFT[i] = DFT(BSF[i],_jumlahData);
+            });
+        }
+
+        private void preprocessingSignalTesting()
+        {
+            double[][] BPFOrde6 = new double[8][];
+            double[][] BSF = new double[8][];
+            double[][] vDFT = new double[8][];
         }
 
     }
