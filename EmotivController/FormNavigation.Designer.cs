@@ -138,6 +138,7 @@
             this.btKanan.TabIndex = 0;
             this.btKanan.Text = "Kanan";
             this.btKanan.UseVisualStyleBackColor = true;
+            this.btKanan.Click += new System.EventHandler(this.btKanan_Click);
             // 
             // flowLayoutPanel6
             // 
@@ -156,6 +157,7 @@
             this.btBerhenti.TabIndex = 0;
             this.btBerhenti.Text = "Berhenti";
             this.btBerhenti.UseVisualStyleBackColor = true;
+            this.btBerhenti.Click += new System.EventHandler(this.btBerhenti_Click);
             // 
             // flowLayoutPanel5
             // 
@@ -231,6 +233,7 @@
             this.btMaju.TabIndex = 0;
             this.btMaju.Text = "Maju";
             this.btMaju.UseVisualStyleBackColor = true;
+            this.btMaju.Click += new System.EventHandler(this.btMaju_Click);
             // 
             // flowLayoutPanel2
             // 
@@ -322,6 +325,7 @@
             this.btMundur.TabIndex = 0;
             this.btMundur.Text = "Mundur";
             this.btMundur.UseVisualStyleBackColor = true;
+            this.btMundur.Click += new System.EventHandler(this.btMundur_Click);
             // 
             // FormNavigation
             // 

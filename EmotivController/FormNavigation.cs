@@ -13,7 +13,8 @@ using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
 using WebSocketSharp;
-
+using System.IO;
+using System.Numerics;
 namespace EmotivController
 {
     public partial class FormNavigation : Form
@@ -21,10 +22,11 @@ namespace EmotivController
         private Process cmdProcess;
         private bool isOK = false;
         private bool isRunning = false;
+        //private bool isConnect = false;
         private WebSocket ws;
         private string old_data = "";
         private string ipAddress = "127.0.0.1";
-        private string selectedArrow = "kiri";
+        private string _selectedArrow = "";
         private List<double> _dataAF3 = new List<double>();
         private List<double> _dataAF4 = new List<double>();
         private List<double> _dataF7 = new List<double>();
@@ -49,16 +51,27 @@ namespace EmotivController
             if (ws == null || !ws.IsAlive)
             {
                 ws = new WebSocket("ws://" + ipAddress + ":8080/");
+                Console.WriteLine(ws.IsAlive);
                 btConnect.Enabled = false;
                 btfromZero.Enabled = true;
                 btLangsungTraining.Enabled = true;
                 ws.Connect();
+                transportSignal.RunWorkerAsync();
+                
             }
+        }
+
+
+
+        private void transportSignal_DoWork(object sender, DoWorkEventArgs e)
+        {
+            ws.OnMessage += OnMessageResult;
+            ws.Send("START");
         }
 
         public void OnMessageResult(object sender, MessageEventArgs e)
         {
-            if (watch.Elapsed.Seconds != 5)
+            if (!old_data.Equals(e.Data))
             {
                 old_data = e.Data;
                 DataModel data = new DataModel();
@@ -71,39 +84,107 @@ namespace EmotivController
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show("Error " + ex);
                     Console.WriteLine("error : " + ex.Message);
                 }
-                if (isParsed)
+                if (isParsed&&_selectedArrow!="")
                 {
-                    _dataAF3.Add(data.AF3.value - mean);
-                    _dataAF4.Add(data.AF3.value - mean);
-                    _dataF3.Add(data.F3.value - mean);
-                    _dataF4.Add(data.F4.value - mean);
-                    _dataF7.Add(data.F7.value - mean);
-                    _dataF8.Add(data.F8.value - mean);
-                    _dataFC5.Add(data.FC5.value - mean);
-                    _dataFC6.Add(data.FC6.value - mean);
-                }
-
-            }
-            else if (watch.Elapsed.Seconds>=5&&_dataAF3.Count==_jumlahData)
-            {
-                //ws.Close();
-                ws.Send("STOP");
-                watch.Stop();
-                isRunning = false;
-                string message = "Done";
-                string caption = "Done Capture Signal";
-                MessageBoxButtons buttons = MessageBoxButtons.OK;
-                DialogResult result;
-                result = MessageBox.Show(message, caption, buttons);
-                if (result == System.Windows.Forms.DialogResult.Yes)
-                {
-
+                    // Place delegate on the Dispatcher.
+                    if (_dataAF3.Count() == _jumlahData)
+                    {
+                        string selectArrow = _selectedArrow;
+                        disableEnableButton();
+                        string message = "Pengambilan Data sinyal otak selesai ("+selectArrow+")";
+                        string caption = "Setelah Klik OK, akan melakukan penyimpanan data!";
+                        MessageBoxButtons buttons = MessageBoxButtons.YesNo;
+                        DialogResult result;
+                        result = MessageBox.Show(message, caption, buttons);
+                        if (result == System.Windows.Forms.DialogResult.Yes)
+                        {
+                            preprocessingSignalTraining(_dataAF3,_dataAF4,_dataF3,_dataF4,_dataF7,_dataF8,_dataFC5,_dataFC6, selectArrow);
+                        }
+                        clearList();
+                    }
+                    else
+                    {
+                        _dataAF3.Add(data.AF3.value - mean);
+                        _dataAF4.Add(data.AF3.value - mean);
+                        _dataF3.Add(data.F3.value - mean);
+                        _dataF4.Add(data.F4.value - mean);
+                        _dataF7.Add(data.F7.value - mean);
+                        _dataF8.Add(data.F8.value - mean);
+                        _dataFC5.Add(data.FC5.value - mean);
+                        _dataFC6.Add(data.FC6.value - mean);
+                    }
                 }
             }
         }
+
+        //public void OnMessageResult(object sender, MessageEventArgs e)
+        //{
+        //    if (isRunning == false)
+        //    {
+        //        isRunning = true;
+        //        Console.WriteLine(isRunning);
+        //        watch = new Stopwatch();
+        //        Console.WriteLine("start watch");
+        //        watch.Start();
+        //    }
+        //    else
+        //    {
+        //        Console.WriteLine("Masuk");
+        //        if (watch.Elapsed.Seconds != 5)
+        //        {
+        //            old_data = e.Data;
+        //            DataModel data = new DataModel();
+        //            bool isParsed = false;
+        //            float mean = (float)4167.9950522878;
+        //            try
+        //            {
+        //                data = new JavaScriptSerializer().Deserialize<DataModel>(e.Data);
+        //                isParsed = true;
+        //            }
+        //            catch (Exception ex)
+        //            {
+        //                MessageBox.Show("Error " + ex);
+        //                Console.WriteLine("error : " + ex.Message);
+        //            }
+        //            if (isParsed)
+        //            {
+        //                _dataAF3.Add(data.AF3.value - mean);
+        //                _dataAF4.Add(data.AF3.value - mean);
+        //                _dataF3.Add(data.F3.value - mean);
+        //                _dataF4.Add(data.F4.value - mean);
+        //                _dataF7.Add(data.F7.value - mean);
+        //                _dataF8.Add(data.F8.value - mean);
+        //                _dataFC5.Add(data.FC5.value - mean);
+        //                _dataFC6.Add(data.FC6.value - mean);
+        //            }
+        //        }
+        //        else if (watch.Elapsed.Seconds >= 5)
+        //        {
+        //            if (_dataAF3.Count==_jumlahData)
+        //            {
+        //                Console.WriteLine("Stop");
+        //                //ws.Close();
+        //                ws.Send("STOP");
+        //                watch.Stop();
+        //                isRunning = false;
+        //                string message = "Done";
+        //                string caption = "Done Capture Signal";
+        //                MessageBoxButtons buttons = MessageBoxButtons.OK;
+        //                DialogResult result;
+        //                result = MessageBox.Show(message, caption, buttons);
+        //                ws.Close();
+        //                if (result == System.Windows.Forms.DialogResult.Yes)
+        //                {
+
+        //                }
+        //            }
+
+        //        }
+        //    }
+
+        //}
 
         private void FormNavigation_FormClosed(object sender, FormClosedEventArgs e)
         {
@@ -156,21 +237,7 @@ namespace EmotivController
             _dataFC5.Clear();
             _dataFC6.Clear();
         }
-
-        private void btKiri_Click(object sender, EventArgs e)
-        {
-            watch = new Stopwatch();
-            if (!_dataAF3.Any())
-            {
-                clearList();
-            }
-            if (ws.IsAlive) { 
-                ws.Connect();
-            }
-            watch.Start();
-            transportSignal.RunWorkerAsync();
-        }
-
+        
         private void btfromZero_Click(object sender, EventArgs e)
         {
             btKiri.Enabled = true;
@@ -189,37 +256,55 @@ namespace EmotivController
         }
         
         //transport Signal DO WORK
-        private void transportSignal_DoWork(object sender, DoWorkEventArgs e)
-        {
-            ws.OnMessage += OnMessageResult;
-            isRunning = true;
-            ws.Send("START");
-        }
+
 
         //Preprocessing
 
-        private double[] DFT(double[] signal, int jumlahData)
+        private double[] DFT(double[] signal)
         {
-            double[] _re = new double[jumlahData];
-            double[] _im = new double[jumlahData];
-            double[] _hasilKuadrat = new double[jumlahData];
-            double[] _dft = new double[jumlahData];
+            int jumlahData = signal.Length;
+            double[] re = new double[jumlahData];
+            double[] im = new double[jumlahData];
+            double[] hasilKuadrat = new double[jumlahData];
+            double[] dft = new double[jumlahData];
             Parallel.For(0, jumlahData, i =>
             {
-                _re[i] = 0;
-                _im[i] = 0;
-                for(int j = 0; j < jumlahData; i++)
+                re[i] = 0;
+                im[i] = 0;
+                for(int j = 0; j < jumlahData; j++)
                 {
-                    _re[i] = _re[i] + signal[j] * Math.Cos(2 * Math.PI * j * i) / jumlahData;
-                    _im[j] = _im[j] - signal[j] * Math.Sin(2 * Math.PI * j * i) / jumlahData;
+                    re[i] = re[i] + signal[j] * Math.Cos(2 * Math.PI * j * i) / jumlahData;
+                    im[i] = im[i] - signal[j] * Math.Sin(2 * Math.PI * j * i) / jumlahData;
                 }
-                _hasilKuadrat[i] = Math.Sqrt(_re[i]) + Math.Sqrt(_im[i]);
-                _dft[i] = Math.Sqrt(_hasilKuadrat[i]) / jumlahData;
+                hasilKuadrat[i] = Math.Sqrt(re[i]) + Math.Sqrt(im[i]);
+                dft[i] = Math.Sqrt(hasilKuadrat[i]) / (jumlahData / 2);
             });
-            return _dft;
+            return dft;
         }
 
-        double _frequencyCutOff = 0.7;
+        private double[] FFT(double[] signal)
+        {
+            double[] fft = new double[signal.Length];
+            Complex[] fftComplex = new Complex[signal.Length];
+            //Parallel.For(0, signal.Length, i =>
+            //{
+            for (int i = 0; i < signal.Length; i++)
+            {
+                fftComplex[i] = new Complex(signal[i], 0.0);
+            }
+            //});
+            Accord.Math.FourierTransform.FFT(fftComplex, Accord.Math.FourierTransform.Direction.Forward);
+            //Parallel.For(0, signal.Length, i =>
+            //{
+            for (int i = 0; i < signal.Length; i++)
+            {
+                fft[i] = fftComplex[i].Magnitude;
+            }
+            //});
+            return fft;
+        }
+
+        double _frequencyCutOff = 0.5;
 
         private double[] filterBPFOrde4(double[] signal, int jumlahData)
         {
@@ -261,10 +346,11 @@ namespace EmotivController
             return bpfOrde4;
         }
 
-        private double[] filterBPFOrde6(double[] signal, int jumlahData)
+        private double[] filterBPFOrde6(double[] signal)
         {
             double r = 0;
-            double theta = 2 * Math.PI * _frequencyCutOff * _frekuensiSampling;
+            double theta = 2 * Math.PI * _frequencyCutOff / _frekuensiSampling;
+            int jumlahData = signal.Length;
             double[] bpfOrde6 = new double[jumlahData];
             //for (int i = 0; i <_jumlahData; i++)
             Parallel.For(0, jumlahData, i =>
@@ -297,9 +383,10 @@ namespace EmotivController
             return bpfOrde6;
         }
 
-        private double[] filterBSF(double[] signal, int jumlahData)//notch
+        private double[] filterBSF(double[] signal)//notch
         {
             double r = 0;
+            int jumlahData = signal.Length;
             double theta = 2 * Math.PI * _frequencyCutOff * _frekuensiSampling;
             double gain = (1 - 2 * r * Math.Cos(theta) + r * r) / (2 - 2 * Math.Cos(theta));
             double[] bsf = new double[jumlahData];
@@ -322,29 +409,48 @@ namespace EmotivController
             return bsf;
         }
 
-        private void preprocessingSignalTraining()
+        private void preprocessingSignalTraining(List<double>dataAF3, List<double>dataAF4,
+            List<double>dataF3, List<double>dataF4, List<double>dataF7, List<double>dataF8,
+            List<double>dataFC5, List<double>dataFC6, string selectArrow)
         {
             double[][] BPFOrde6 = new double[8][];
             double[][] BSF = new double[8][];
-            double[][] vDFT = new double[8][];
+            double[][] vFFT = new double[8][];
 
-            BPFOrde6[0] = filterBPFOrde6(_dataAF3.ToArray(),_jumlahData);
-            BPFOrde6[1] = filterBPFOrde6(_dataAF4.ToArray(),_jumlahData);
-            BPFOrde6[2] = filterBPFOrde6(_dataF3.ToArray(),_jumlahData);
-            BPFOrde6[3] = filterBPFOrde6(_dataF4.ToArray(),_jumlahData);
-            BPFOrde6[4] = filterBPFOrde6(_dataF7.ToArray(),_jumlahData);
-            BPFOrde6[5] = filterBPFOrde6(_dataF8.ToArray(),_jumlahData);
-            BPFOrde6[6] = filterBPFOrde6(_dataFC5.ToArray(),_jumlahData);
-            BPFOrde6[7] = filterBPFOrde6(_dataFC6.ToArray(),_jumlahData);
-
+            BPFOrde6[0] = filterBPFOrde6(dataAF3.ToArray());
+            savePerNewFile(dataAF3.ToArray(), "RAW", "AF3");
+            savePerNewFile(BPFOrde6[0], "BPF", "AF3");
+            BPFOrde6[1] = filterBPFOrde6(dataAF4.ToArray());
+            savePerNewFile(dataAF4.ToArray(), "RAW", "AF4");
+            savePerNewFile(BPFOrde6[1], "BPF", "AF4");
+            BPFOrde6[2] = filterBPFOrde6(dataF3.ToArray());
+            savePerNewFile(dataF3.ToArray(), "RAW", "F3");
+            savePerNewFile(BPFOrde6[2], "BPF", "AF4");
+            BPFOrde6[3] = filterBPFOrde6(dataF4.ToArray());
+            savePerNewFile(dataF4.ToArray(), "RAW", "F4");
+            savePerNewFile(BPFOrde6[3], "BPF", "AF4");
+            BPFOrde6[4] = filterBPFOrde6(dataF7.ToArray());
+            savePerNewFile(dataF7.ToArray(), "RAW", "F7");
+            savePerNewFile(BPFOrde6[4], "BPF", "F7");
+            BPFOrde6[5] = filterBPFOrde6(dataF8.ToArray());
+            savePerNewFile(dataF8.ToArray(), "RAW", "F8");
+            savePerNewFile(BPFOrde6[5], "BPF", "F8");
+            BPFOrde6[6] = filterBPFOrde6(dataFC5.ToArray());
+            savePerNewFile(dataFC5.ToArray(), "RAW", "FC5");
+            savePerNewFile(BPFOrde6[6], "BPF", "FC5");
+            BPFOrde6[7] = filterBPFOrde6(dataFC6.ToArray());
+            savePerNewFile(dataFC6.ToArray(), "RAW", "FC6");
+            savePerNewFile(BPFOrde6[7], "BPF", "FC6");
+            string[] signal = new string[8] { "AF3", "AF4", "F3", "F4", "F7", "F8", "FC5", "FC6" };
             Parallel.For(0, 8, i =>
             {
-                BSF[i] = filterBSF(BPFOrde6[i],_jumlahData);
+                BSF[i] = filterBSF(BPFOrde6[i]);
+                savePerNewFile(BSF[i], "BSF", signal[i]);
             });
-
             Parallel.For(0, 8, i =>
             {
-                vDFT[i] = DFT(BSF[i],_jumlahData);
+                vFFT[i] = FFT(BSF[i]);
+                savePerNewFile(vFFT[i], "FFT", signal[i]);
             });
         }
 
@@ -355,5 +461,131 @@ namespace EmotivController
             double[][] vDFT = new double[8][];
         }
 
+        private void disableEnableButton()
+        {
+            switch (_selectedArrow)
+            {
+                case "kiri":
+                    btKanan.Invoke(new MethodInvoker(delegate { Enabled = true; }));
+                    _selectedArrow = "";
+                    break;
+                case "kanan":
+                    btMundur.Invoke(new MethodInvoker(delegate { Enabled = true; }));
+                    _selectedArrow = "";
+                    break;
+                case "maju":
+                    btMundur.Invoke(new MethodInvoker(delegate { Enabled = true; }));
+                    _selectedArrow = "";
+                    break;
+                case "mundur":
+                    btBerhenti.Invoke(new MethodInvoker(delegate { Enabled = true; }));
+                    _selectedArrow = "";
+                    break;
+                case "berhenti":
+                    btfromZero.Invoke(new MethodInvoker(delegate { Enabled = true; }));
+                    _selectedArrow = "";
+                    break;
+            }
+        }
+
+        private void btKiri_Click(object sender, EventArgs e)
+        {
+            string message = "Pengambilan Data sinyal otak ke kiri";
+            string caption = "Setelah Klik OK, akan melakukan pengambilan data!";
+            MessageBoxButtons buttons = MessageBoxButtons.YesNo;
+            DialogResult result;
+
+            // Displays the MessageBox.
+
+            result = MessageBox.Show(message, caption, buttons);
+
+            if (result == System.Windows.Forms.DialogResult.Yes)
+            {
+                _selectedArrow = "kiri";
+                btKiri.Enabled = false;
+            }
+
+        }
+
+        private void btKanan_Click(object sender, EventArgs e)
+        {
+            string message = "Pengambilan Data sinyal otak ke kanan";
+            string caption = "Setelah Klik OK, akan melakukan pengambilan data!";
+            MessageBoxButtons buttons = MessageBoxButtons.YesNo;
+            DialogResult result;
+
+            // Displays the MessageBox.
+
+            result = MessageBox.Show(message, caption, buttons);
+
+            if (result == System.Windows.Forms.DialogResult.Yes)
+            {
+                _selectedArrow = "kanan";
+                btKanan.Enabled = false;
+            }
+        }
+
+        private void btMaju_Click(object sender, EventArgs e)
+        {
+            string message = "Pengambilan Data sinyal otak ke maju";
+            string caption = "Setelah Klik OK, akan melakukan pengambilan data!";
+            MessageBoxButtons buttons = MessageBoxButtons.YesNo;
+            DialogResult result;
+
+            // Displays the MessageBox.
+
+            result = MessageBox.Show(message, caption, buttons);
+
+            if (result == System.Windows.Forms.DialogResult.Yes)
+            {
+                _selectedArrow = "maju";
+                btMaju.Enabled = false;
+            }
+        }
+
+        private void btMundur_Click(object sender, EventArgs e)
+        {
+            string message = "Pengambilan Data sinyal otak ke mundur";
+            string caption = "Setelah Klik OK, akan melakukan pengambilan data!";
+            MessageBoxButtons buttons = MessageBoxButtons.YesNo;
+            DialogResult result;
+
+            // Displays the MessageBox.
+
+            result = MessageBox.Show(message, caption, buttons);
+
+            if (result == System.Windows.Forms.DialogResult.Yes)
+            {
+                _selectedArrow = "mundur";
+                btMundur.Enabled = false;
+            }
+        }
+
+        private void btBerhenti_Click(object sender, EventArgs e)
+        {
+            string message = "Pengambilan Data sinyal otak ke berhenti";
+            string caption = "Setelah Klik OK, akan melakukan pengambilan data!";
+            MessageBoxButtons buttons = MessageBoxButtons.YesNo;
+            DialogResult result;
+
+            // Displays the MessageBox.
+
+            result = MessageBox.Show(message, caption, buttons);
+
+            if (result == System.Windows.Forms.DialogResult.Yes)
+            {
+                _selectedArrow = "berhenti";
+                btBerhenti.Enabled = false;
+            }
+        }
+
+        private void savePerNewFile(double[] signal, string context, string signalName)
+        {
+            string filename = "csv/"+context+"_"+signalName+"_"+ DateTime.Now.ToString("yyyy-dd-M--HH-mm-ss")+".csv";
+            for (int i = 0; i < signal.Length; i++)
+            {
+                File.AppendAllText(filename, signal[i] + Environment.NewLine);
+            }
+        }
     }
 }

@@ -13,3 +13,10 @@ C:\Users\Frans\Documents\GitHub\EmotivController\EmotivController\bin\Debug\webs
 C:\Users\Frans\Documents\GitHub\EmotivController\EmotivController\obj\Debug\EmotivController.csproj.CopyComplete
 C:\Users\Frans\Documents\GitHub\EmotivController\EmotivController\bin\Debug\ScottPlot.dll
 C:\Users\Frans\Documents\GitHub\EmotivController\EmotivController\bin\Debug\ScottPlot.pdb
+C:\Users\Frans\Documents\GitHub\EmotivController\EmotivController\bin\Debug\Accord.dll.config
+C:\Users\Frans\Documents\GitHub\EmotivController\EmotivController\bin\Debug\Accord.dll
+C:\Users\Frans\Documents\GitHub\EmotivController\EmotivController\bin\Debug\Accord.Math.Core.dll
+C:\Users\Frans\Documents\GitHub\EmotivController\EmotivController\bin\Debug\Accord.Math.dll
+C:\Users\Frans\Documents\GitHub\EmotivController\EmotivController\bin\Debug\Accord.xml
+C:\Users\Frans\Documents\GitHub\EmotivController\EmotivController\bin\Debug\Accord.Math.xml
+C:\Users\Frans\Documents\GitHub\EmotivController\EmotivController\bin\Debug\Accord.Math.Core.xml
