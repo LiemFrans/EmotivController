@@ -205,6 +205,7 @@
             this.btTesting.TabIndex = 2;
             this.btTesting.Text = "Testing";
             this.btTesting.UseVisualStyleBackColor = true;
+            this.btTesting.Click += new System.EventHandler(this.btTesting_Click);
             // 
             // btCancelTest
             // 
@@ -215,6 +216,7 @@
             this.btCancelTest.TabIndex = 3;
             this.btCancelTest.Text = "Cancel Test";
             this.btCancelTest.UseVisualStyleBackColor = true;
+            this.btCancelTest.Click += new System.EventHandler(this.btCancelTest_Click);
             // 
             // flowLayoutPanel3
             // 
@@ -258,6 +260,7 @@
             this.btTraining.TabIndex = 1;
             this.btTraining.Text = "Training";
             this.btTraining.UseVisualStyleBackColor = true;
+            this.btTraining.Click += new System.EventHandler(this.btTraining_Click);
             // 
             // btLangsungTraining
             // 
@@ -307,6 +310,7 @@
             this.btAmbilDataLagi.TabIndex = 4;
             this.btAmbilDataLagi.Text = "Ambil Data Lagi";
             this.btAmbilDataLagi.UseVisualStyleBackColor = true;
+            this.btAmbilDataLagi.Click += new System.EventHandler(this.btAmbilDataLagi_Click);
             // 
             // flowLayoutPanel1
             // 

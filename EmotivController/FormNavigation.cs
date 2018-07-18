@@ -17,7 +17,11 @@ using System.IO;
 using System.Numerics;
 using Accord.Statistics;
 using System.Threading;
-
+using Accord.MachineLearning.VectorMachines.Learning;
+using Accord.Statistics.Kernels;
+using Accord.Math.Optimization.Losses;
+using Accord.MachineLearning.VectorMachines;
+using System.IO.Ports;
 namespace EmotivController
 {
     public partial class FormNavigation : Form
@@ -30,6 +34,7 @@ namespace EmotivController
         private string old_data = "";
         private string ipAddress = "127.0.0.1";
         private string _selectedArrow = "";
+        private bool _isTraining;
         //private List<double> _dataAF3 = new List<double>();
         //private List<double> _dataAF4 = new List<double>();
         private List<double> _dataF7 = new List<double>();
@@ -41,7 +46,11 @@ namespace EmotivController
         private static int _frekuensiSampling = 128;
         private static int _second = 8;
         private static int _jumlahData = _frekuensiSampling * _second;
+        private static int _secondTesting = 2;
+        private static int _timeTesting = _frekuensiSampling * _secondTesting;
         private Stopwatch watch;
+        private MulticlassSupportVectorMachine<Gaussian> machine;
+        private SerialPort _myport;
         public FormNavigation()
         {
             InitializeComponent();
@@ -54,6 +63,7 @@ namespace EmotivController
             {
                 ws = new WebSocket("ws://" + ipAddress + ":8080/");
                 Console.WriteLine(ws.IsAlive);
+                _isTraining = true;
                 btConnect.Enabled = false;
                 btfromZero.Enabled = true;
                 btLangsungTraining.Enabled = true;
@@ -87,29 +97,52 @@ namespace EmotivController
                 }
                 if (isParsed&&_selectedArrow!="")
                 {
-                    // Place delegate on the Dispatcher.
-                    if (_dataF3.Count() == _jumlahData)
+                    if (_isTraining)
                     {
-                        string selectArrow = _selectedArrow;
-                        string message = "Pengambilan Data sinyal otak selesai ("+selectArrow+")";
-                        string caption = "Setelah Klik OK, akan melakukan penyimpanan data!";
-                        MessageBoxButtons buttons = MessageBoxButtons.YesNo;
-                        DialogResult result;
-                        result = MessageBox.Show(message, caption, buttons);
-                        if (result == System.Windows.Forms.DialogResult.Yes)
+                        // Place delegate on the Dispatcher.
+                        if (_dataF3.Count() == _jumlahData)
                         {
-                            preprocessingSignalTraining(_dataF3,_dataF4,_dataF7,_dataF8,_dataFC5,_dataFC6, selectArrow);
-                            clearList();
+                            string selectArrow = _selectedArrow;
+                            string message = "Pengambilan Data sinyal otak selesai (" + selectArrow + ")";
+                            string caption = "Setelah Klik OK, akan melakukan penyimpanan data!";
+                            MessageBoxButtons buttons = MessageBoxButtons.YesNo;
+                            DialogResult result;
+                            result = MessageBox.Show(message, caption, buttons);
+                            if (result == System.Windows.Forms.DialogResult.Yes)
+                            {
+                                preprocessingSignalTraining(_dataF3, _dataF4, _dataF7, _dataF8, _dataFC5, _dataFC6, selectArrow);
+                                clearList();
+                            }
+                        }
+                        else
+                        {
+                            _dataF3.Add(data.F3.value - mean);
+                            _dataF4.Add(data.F4.value - mean);
+                            _dataF7.Add(data.F7.value - mean);
+                            _dataF8.Add(data.F8.value - mean);
+                            _dataFC5.Add(data.FC5.value - mean);
+                            _dataFC6.Add(data.FC6.value - mean);
                         }
                     }
-                    else
+                    else if(_isTraining==false)
                     {
-                        _dataF3.Add(data.F3.value - mean);
-                        _dataF4.Add(data.F4.value - mean);
-                        _dataF7.Add(data.F7.value - mean);
-                        _dataF8.Add(data.F8.value - mean);
-                        _dataFC5.Add(data.FC5.value - mean);
-                        _dataFC6.Add(data.FC6.value - mean);
+                        if(_dataF3.Count()== _timeTesting)
+                        {
+                            var feature = preprocessingSignalTesting(_dataF3, _dataF4, _dataF7, _dataF8, _dataFC5, _dataFC6);
+                            int dec = machine.Decide(feature)[0];
+                            Console.WriteLine(dec);
+                            clearList();
+                            Thread.Sleep(TimeSpan.FromSeconds(3));//rest 3 seconds
+                        }
+                        else
+                        {
+                            _dataF3.Add(data.F3.value - mean);
+                            _dataF4.Add(data.F4.value - mean);
+                            _dataF7.Add(data.F7.value - mean);
+                            _dataF8.Add(data.F8.value - mean);
+                            _dataFC5.Add(data.FC5.value - mean);
+                            _dataFC6.Add(data.FC6.value - mean);
+                        }
                     }
                 }
             }
@@ -510,33 +543,33 @@ namespace EmotivController
             List<double> dataF3, List<double> dataF4, List<double> dataF7, List<double> dataF8,
             List<double> dataFC5, List<double> dataFC6, string selectArrow)
         {
-            double[][] BPFOrde6 = new double[6][];
+            double[][] BPFOrde2 = new double[6][];
             double[][] BSF = new double[6][];
             double[][] window = new double[6][];
             double[][] vFFT = new double[6][];
             double[][] feature = new double[6][];
-                BPFOrde6[0] = filterBPFOrde2(dataF3.ToArray());
+                BPFOrde2[0] = filterBPFOrde2(dataF3.ToArray());
                 savePerNewFile(dataF3.ToArray(), "RAW", "F3", selectArrow);
-                savePerNewFile(BPFOrde6[0], "BPF", "AF4", selectArrow);
-                BPFOrde6[1] = filterBPFOrde2(dataF4.ToArray());
+                savePerNewFile(BPFOrde2[0], "BPF", "AF4", selectArrow);
+                BPFOrde2[1] = filterBPFOrde2(dataF4.ToArray());
                 savePerNewFile(dataF4.ToArray(), "RAW", "F4", selectArrow);
-                savePerNewFile(BPFOrde6[1], "BPF", "AF4", selectArrow);
-                BPFOrde6[2] = filterBPFOrde2(dataF7.ToArray());
+                savePerNewFile(BPFOrde2[1], "BPF", "AF4", selectArrow);
+                BPFOrde2[2] = filterBPFOrde2(dataF7.ToArray());
                 savePerNewFile(dataF7.ToArray(), "RAW", "F7", selectArrow);
-                savePerNewFile(BPFOrde6[2], "BPF", "F7", selectArrow);
-                BPFOrde6[3] = filterBPFOrde2(dataF8.ToArray());
+                savePerNewFile(BPFOrde2[2], "BPF", "F7", selectArrow);
+                BPFOrde2[3] = filterBPFOrde2(dataF8.ToArray());
                 savePerNewFile(dataF8.ToArray(), "RAW", "F8", selectArrow);
-                savePerNewFile(BPFOrde6[3], "BPF", "F8", selectArrow);
-                BPFOrde6[4] = filterBPFOrde2(dataFC5.ToArray());
+                savePerNewFile(BPFOrde2[3], "BPF", "F8", selectArrow);
+                BPFOrde2[4] = filterBPFOrde2(dataFC5.ToArray());
                 savePerNewFile(dataFC5.ToArray(), "RAW", "FC5", selectArrow);
-                savePerNewFile(BPFOrde6[4], "BPF", "FC5", selectArrow);
-                BPFOrde6[5] = filterBPFOrde2(dataFC6.ToArray());
+                savePerNewFile(BPFOrde2[4], "BPF", "FC5", selectArrow);
+                BPFOrde2[5] = filterBPFOrde2(dataFC6.ToArray());
                 savePerNewFile(dataFC6.ToArray(), "RAW", "FC6", selectArrow);
-                savePerNewFile(BPFOrde6[5], "BPF", "FC6", selectArrow);
+                savePerNewFile(BPFOrde2[5], "BPF", "FC6", selectArrow);
             string[] signal = new string[6] { "F3", "F4", "F7", "F8", "FC5", "FC6" };
             Parallel.For(0, 6, i =>
             {
-                BSF[i] = filterBSF(BPFOrde6[i]);
+                BSF[i] = filterBSF(BPFOrde2[i]);
                 savePerNewFile(BSF[i], "BSF", signal[i], selectArrow);
             });
             Parallel.For(0, 6, i =>
@@ -557,11 +590,49 @@ namespace EmotivController
             disableEnableButton();
         }
 
-        private void preprocessingSignalTesting()
+        private double[][] preprocessingSignalTesting(
+            List<double> dataF3, List<double> dataF4, List<double> dataF7, List<double> dataF8,
+            List<double> dataFC5, List<double> dataFC6)
         {
-            double[][] BPFOrde6 = new double[8][];
+            double[][] BPFOrde2 = new double[8][];
             double[][] BSF = new double[8][];
-            double[][] vDFT = new double[8][];
+            double[][] window = new double[6][];
+            double[][] vFFT = new double[6][];
+            double[][] feature = new double[6][];
+            BPFOrde2[0] = filterBPFOrde2(dataF3.ToArray());
+            BPFOrde2[1] = filterBPFOrde2(dataF4.ToArray());
+            BPFOrde2[2] = filterBPFOrde2(dataF7.ToArray());
+            BPFOrde2[3] = filterBPFOrde2(dataF8.ToArray());
+            BPFOrde2[4] = filterBPFOrde2(dataFC5.ToArray());
+            BPFOrde2[5] = filterBPFOrde2(dataFC6.ToArray());
+            string[] signal = new string[6] { "F3", "F4", "F7", "F8", "FC5", "FC6" };
+            Parallel.For(0, 6, i =>
+            {
+                BSF[i] = filterBSF(BPFOrde2[i]);
+            });
+            Parallel.For(0, 6, i =>
+            {
+                window[i] = windowing(BSF[i]);
+            });
+            Parallel.For(0, 6, i =>
+            {
+                vFFT[i] = FFT(window[i]);
+            });
+            Parallel.For(0, 6, i =>
+            {
+                feature[i] = extractionFeature(vFFT[i]);
+            });
+            var ft = new double[1][];
+            var perchannel = new List<double>();
+            foreach(var f in feature)
+            {
+                foreach(var c in f)
+                {
+                    perchannel.Add(c);
+                }
+            }
+            ft[0] = perchannel.ToArray();
+            return ft;
         }
 
         private void disableEnableButton()
@@ -703,36 +774,166 @@ namespace EmotivController
             }
         }
 
-        private void saveOneFile(double[][] signal, string selectarrow)
+        private void saveOneFile(double[][] feature, string selectarrow)
         {
             string filename = "csv/feature.csv";
-            for(int i = 0; i < signal.Length; i++)
+            string kelas = "csv/class";
+            for(int i = 0; i < feature.Length; i++)
             {
-                for(int j = 0; j < signal[i].Length; j++)
+                for(int j = 0; j < feature[i].Length; j++)
                 {
-                    File.AppendAllText(filename, signal[i][j]+";");
+                    File.AppendAllText(filename, feature[i][j]+";");
+                    if (i == feature.Length - 1 &&  j == feature[feature.Length - 1].Length - 1)
+                    {
+                        File.AppendAllText(filename, feature[i][j]  + "" + Environment.NewLine);
+                    }
                 }
             }
+
             int arrow;
             switch (selectarrow)
             {
                 case "kiri":
-                    File.AppendAllText(filename, 0 + "" + Environment.NewLine);
+                    File.AppendAllText(kelas, 0 + "" + Environment.NewLine);
                     break;
                 case "kanan":
-                    File.AppendAllText(filename, 1 + "" + Environment.NewLine);
+                    File.AppendAllText(kelas, 1 + "" + Environment.NewLine);
                     break;
                 case "maju":
-                    File.AppendAllText(filename, 2 + "" + Environment.NewLine);
+                    File.AppendAllText(kelas, 2 + "" + Environment.NewLine);
                     break;
                 case "mundur":
-                    File.AppendAllText(filename, 3 + "" + Environment.NewLine);
+                    File.AppendAllText(kelas, 3 + "" + Environment.NewLine);
                     break;
                 case "berhenti":
-                    File.AppendAllText(filename, 4 + "" + Environment.NewLine);
+                    File.AppendAllText(kelas, 4 + "" + Environment.NewLine);
                     break;
             }
             MessageBox.Show("Save Done");
         }
+
+        private Tuple<double[][], int[]> loadOneFile()
+        {
+            string dokumenTraining = "csv/feature.csv";
+            var csv = File.ReadLines(dokumenTraining);
+            int jumlahDataTraining = File.ReadLines(dokumenTraining).Count();
+            double[][] inputs = new double[jumlahDataTraining][];
+            int[] outputs = new int[jumlahDataTraining];
+            var lines = new List<int[]>();
+            int index = 0;
+            foreach (var rows in csv)
+            {
+                inputs[index] = rows.Split(';').Select(double.Parse).ToArray();
+                index++;
+            }
+            string kelas = "class.csv";
+            index = 0;
+            csv = File.ReadLines(kelas);
+            foreach (var rows in csv)
+            {
+                outputs[index] = Convert.ToInt32(rows);
+                index++;
+            }
+            return Tuple.Create(inputs, outputs);
+        }
+
+        private void btTesting_Click(object sender, EventArgs e)
+        {
+            _isTraining = false;
+        }
+
+        private void btTraining_Click(object sender, EventArgs e)
+        {
+            var pair = loadOneFile();
+            var feature = pair.Item1;
+            var kelas = pair.Item2;
+            var teacher = new MulticlassSupportVectorLearning<Gaussian>()
+            {
+                // Configure the learning algorithm to use SMO to train the
+                //  underlying SVMs in each of the binary class subproblems.
+                Learner = (param) => new SequentialMinimalOptimization<Gaussian>()
+                {
+                    // Estimate a suitable guess for the Gaussian kernel's parameters.
+                    // This estimate can serve as a starting point for a grid search.
+                    UseKernelEstimation = true
+                }
+            };
+
+            // Learn a machine
+            machine = teacher.Learn(feature, kelas);
+
+
+            // Create the multi-class learning algorithm for the machine
+            var calibration = new MulticlassSupportVectorLearning<Gaussian>()
+            {
+                Model = machine, // We will start with an existing machine
+
+                // Configure the learning algorithm to use Platt's calibration
+                Learner = (param) => new ProbabilisticOutputCalibration<Gaussian>()
+                {
+                    Model = param.Model // Start with an existing machine
+                }
+            };
+
+
+            // Configure parallel execution options
+            calibration.ParallelOptions.MaxDegreeOfParallelism = 1;
+
+            // Learn a machine
+            calibration.Learn(feature, kelas);
+
+            // Obtain class predictions for each sample
+            int[] predicted = machine.Decide(feature);
+
+            // Get class scores for each sample
+            double[] scores = machine.Score(feature);
+
+            // Get log-likelihoods (should be same as scores)
+            double[][] logl = machine.LogLikelihoods(feature);
+
+            // Get probability for each sample
+            double[][] prob = machine.Probabilities(feature);
+
+            // Compute classification error
+            double error = new ZeroOneLoss(kelas).Loss(predicted);
+            double loss = new CategoryCrossEntropyLoss(kelas).Loss(prob);
+
+            double temp = 0;
+            for (int j = 0; j < predicted.Length; j++)
+            {
+                if (kelas[j] == predicted[j])
+                {
+                    temp++;
+                }
+            }
+            double accurate = (temp / predicted.Length) * 100;
+            tbAkurasi.Text = accurate + "%";
+            MessageBox.Show("Learning Done, Thankyou!");
+            btTesting.Enabled = true;
+        }
+
+        private void btAmbilDataLagi_Click(object sender, EventArgs e)
+        {
+            _isTraining = true;
+            btKiri.Enabled = true;
+        }
+
+        private void btCancelTest_Click(object sender, EventArgs e)
+        {
+            _isTraining = true;
+        }
+
+        private void initArduino()
+        {
+            try
+            {
+                _myport = new SerialPort();
+                _myport.BaudRate = 9600;//?
+                _myport.PortName = "COM4";//?
+                _myport.Open();
+            }catch(Exception e)
+            {
+                MessageBox.Show("Can't find Wheelchair! " + e);
+            }
     }
 }
