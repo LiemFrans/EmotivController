@@ -22,6 +22,9 @@ using Accord.Statistics.Kernels;
 using Accord.Math.Optimization.Losses;
 using Accord.MachineLearning.VectorMachines;
 using System.IO.Ports;
+using Accord.MachineLearning;
+using Accord.Statistics.Analysis;
+using EmotivController.NeuralNetwork;
 namespace EmotivController
 {
     public partial class FormNavigation : Form
@@ -49,6 +52,7 @@ namespace EmotivController
         private static int _secondTesting = 2;
         private static int _timeTesting = _frekuensiSampling * _secondTesting;
         private Stopwatch watch;
+        private Stopwatch _watchTesting;
         private MulticlassSupportVectorMachine<Gaussian> machine;
         private SerialPort _myport;
         public FormNavigation()
@@ -97,7 +101,7 @@ namespace EmotivController
                 }
                 if (isParsed&&_selectedArrow!="")
                 {
-                    if (_isTraining)
+                    if (_isTraining&&_selectedArrow!="testing")
                     {
                         // Place delegate on the Dispatcher.
                         if (_dataF3.Count() == _jumlahData)
@@ -124,14 +128,21 @@ namespace EmotivController
                             _dataFC6.Add(data.FC6.value - mean);
                         }
                     }
-                    else if(_isTraining==false)
+                    else if(_isTraining==false&&_selectedArrow=="testing")
                     {
-                        if(_dataF3.Count()== _timeTesting)
+                        if (_dataF3.Count()== _timeTesting)
                         {
+                            _watchTesting = new Stopwatch();
+                            _watchTesting.Start();
                             var feature = preprocessingSignalTesting(_dataF3, _dataF4, _dataF7, _dataF8, _dataFC5, _dataFC6);
                             int dec = machine.Decide(feature)[0];
-                            Console.WriteLine(dec);
                             clearList();
+                            sendCommand(dec);
+                            watch.Stop();
+                            MethodInvoker action = delegate{
+                                tbElapsed.Text = "Respond Time"+_watchTesting.ElapsedMilliseconds+" ms" ;
+                            };
+                            tbElapsed.BeginInvoke(action);
                             Thread.Sleep(TimeSpan.FromSeconds(3));//rest 3 seconds
                         }
                         else
@@ -238,7 +249,7 @@ namespace EmotivController
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("Server Already exit");
+                    Console.WriteLine("Server Already exit"+e);
                 }
             }
         }
@@ -477,7 +488,7 @@ namespace EmotivController
         
         private double[] extractionFeature(double[] signal)
         {
-            double[] feature = new double[7];
+            double[] feature = new double[6];
             feature[0] = mean(signal);
             feature[1] = modus(signal);
             feature[2] = min(signal);
@@ -486,6 +497,7 @@ namespace EmotivController
             feature[5] = median(signal);
             return feature;
         }
+
         private double mean(double[]signal)
         {
             double zigma = 0;
@@ -523,7 +535,7 @@ namespace EmotivController
             int numberCount = signal.Count();
             int halfIndex = signal.Count() / 2;
             var sortedNumbers = signal.OrderBy(n => n);
-            double median;
+            //double median;
             if ((numberCount % 2) == 0)
             {
                 return ((sortedNumbers.ElementAt(halfIndex) +
@@ -534,6 +546,7 @@ namespace EmotivController
                 return sortedNumbers.ElementAt(halfIndex);
             }
         }
+
         //private double[] extractionFeature(double[] signal)
         //{
 
@@ -594,8 +607,8 @@ namespace EmotivController
             List<double> dataF3, List<double> dataF4, List<double> dataF7, List<double> dataF8,
             List<double> dataFC5, List<double> dataFC6)
         {
-            double[][] BPFOrde2 = new double[8][];
-            double[][] BSF = new double[8][];
+            double[][] BPFOrde2 = new double[6][];
+            double[][] BSF = new double[6][];
             double[][] window = new double[6][];
             double[][] vFFT = new double[6][];
             double[][] feature = new double[6][];
@@ -767,7 +780,7 @@ namespace EmotivController
 
         private void savePerNewFile(double[] signal, string context, string signalName, string selectArrow)
         {
-            string filename = "csv/"+context+"_"+signalName+"_"+selectArrow+"_"+ DateTime.Now.ToString("yyyy_dd_M_HH_mm_ss")+".csv";
+            string filename = "csv/" + context + "_" + signalName + "_" + selectArrow + "_" + DateTime.Now.ToString("yyyy_dd_M_HH_mm_ss") + ".csv";
             for (int i = 0; i < signal.Length; i++)
             {
                 File.AppendAllText(filename, signal[i] + Environment.NewLine);
@@ -777,7 +790,7 @@ namespace EmotivController
         private void saveOneFile(double[][] feature, string selectarrow)
         {
             string filename = "csv/feature.csv";
-            string kelas = "csv/class";
+            string kelas = "csv/kelas.csv";
             for(int i = 0; i < feature.Length; i++)
             {
                 for(int j = 0; j < feature[i].Length; j++)
@@ -790,7 +803,7 @@ namespace EmotivController
                 }
             }
 
-            int arrow;
+            //int arrow;
             switch (selectarrow)
             {
                 case "kiri":
@@ -816,7 +829,7 @@ namespace EmotivController
         {
             string dokumenTraining = "csv/feature.csv";
             var csv = File.ReadLines(dokumenTraining);
-            int jumlahDataTraining = File.ReadLines(dokumenTraining).Count();
+            int jumlahDataTraining = csv.Count();
             double[][] inputs = new double[jumlahDataTraining][];
             int[] outputs = new int[jumlahDataTraining];
             var lines = new List<int[]>();
@@ -826,7 +839,7 @@ namespace EmotivController
                 inputs[index] = rows.Split(';').Select(double.Parse).ToArray();
                 index++;
             }
-            string kelas = "class.csv";
+            string kelas = "csv/kelas.csv";
             index = 0;
             csv = File.ReadLines(kelas);
             foreach (var rows in csv)
@@ -839,10 +852,29 @@ namespace EmotivController
 
         private void btTesting_Click(object sender, EventArgs e)
         {
+            initArduino();
             _isTraining = false;
+            _selectedArrow = "testing";
+            btTesting.Enabled = false;
+            btCancelTest.Enabled = true;
         }
 
         private void btTraining_Click(object sender, EventArgs e)
+        {
+            svm();
+        }
+        private void knn()
+        {
+            var pair = loadOneFile();
+            var feature = pair.Item1;
+            var kelas = pair.Item2;
+            var knn = new KNearestNeighbors(k: 4);
+            knn.NumberOfInputs = 36;
+            knn.Learn(feature, kelas);
+            int[] predicted = knn.Decide(feature);
+            accurate(kelas, predicted);
+        }
+        private void svm()
         {
             var pair = loadOneFile();
             var feature = pair.Item1;
@@ -911,6 +943,66 @@ namespace EmotivController
             MessageBox.Show("Learning Done, Thankyou!");
             btTesting.Enabled = true;
         }
+        private void lda()
+        {
+            var pair = loadOneFile();
+            var feature = pair.Item1;
+            var kelas = pair.Item2;
+            var lda = new LinearDiscriminantAnalysis(feature,kelas);
+            lda.Compute();
+            var predicted = lda.Classify(feature);
+            accurate(kelas, predicted);
+        }
+        private void kda()
+        {
+            var pair = loadOneFile();
+            var feature = pair.Item1;
+            var kelas = pair.Item2;
+            IKernel kernel = new Gaussian(3.6);
+            var kda = new KernelDiscriminantAnalysis(feature, kelas, kernel);
+            kda.Compute();
+            int[] predicted = kda.Classify(feature);
+            accurate(kelas, predicted);
+        }
+        private void bpnn()
+        {
+            var pair = loadOneFile();
+            var feature = pair.Item1;
+            var kelas = pair.Item2;
+            int numInput = 36; // number features
+            int numHidden = 5;
+            int numOutput = 5; // number of classes for Y
+            var bpnn = new Backpropagation(numInput, numHidden, numOutput);
+            int maxEpochs = 1000;
+            double learnRate = 0.05;
+            double momentum = 0.01;
+            double[] weights = bpnn.Train(feature, maxEpochs, learnRate, momentum);
+        }
+        private void accurate(int[] kelas, int[] predicted)
+        {
+            double temp = 0;
+            for (int j = 0; j < predicted.Length; j++)
+            {
+                if (kelas[j] == predicted[j])
+                {
+                    temp++;
+                }
+            }
+            foreach (var v in kelas)
+            {
+                Console.Write(v + " ");
+            }
+            Console.WriteLine();
+            foreach (var v in predicted)
+            {
+                Console.Write(v + " ");
+            }
+            Console.WriteLine();
+            double accurate = (temp / predicted.Length) * 100;
+            tbAkurasi.Text = accurate + "%";
+            MessageBox.Show("Learning Done, Thankyou!");
+            btTesting.Enabled = true;
+        }
 
         private void btAmbilDataLagi_Click(object sender, EventArgs e)
         {
@@ -921,6 +1013,8 @@ namespace EmotivController
         private void btCancelTest_Click(object sender, EventArgs e)
         {
             _isTraining = true;
+            btTesting.Enabled = true;
+            btCancelTest.Enabled = false;
         }
 
         private void initArduino()
@@ -931,9 +1025,45 @@ namespace EmotivController
                 _myport.BaudRate = 9600;//?
                 _myport.PortName = "COM4";//?
                 _myport.Open();
-            }catch(Exception e)
+            }
+            catch (Exception e)
             {
                 MessageBox.Show("Can't find Wheelchair! " + e);
             }
+        }
+        private void sendCommand(int command)
+        {
+            _myport.Write(command + "");
+            MethodInvoker action;
+            switch (command)
+            {
+                case 0:
+                    action = delegate
+                    { tbArah.Text = "kiri"; };
+                    tbArah.BeginInvoke(action);
+                    break;
+                case 1:
+                    action = delegate
+                    { tbArah.Text = "kanan"; };
+                    tbArah.BeginInvoke(action);
+                    break;
+                case 2:
+                    action = delegate
+                    { tbArah.Text = "maju"; };
+                    tbArah.BeginInvoke(action);
+                    break;
+                case 3:
+                    action = delegate
+                    { tbArah.Text = "mundur"; };
+                    tbArah.BeginInvoke(action);
+                    break;
+                case 4:
+                    action = delegate
+                    { tbArah.Text = "berhenti"; };
+                    tbArah.BeginInvoke(action);
+                    break;
+            }
+
+        }
     }
 }

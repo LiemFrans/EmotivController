@@ -55,6 +55,7 @@
             this.btAmbilDataLagi = new System.Windows.Forms.Button();
             this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
             this.btMundur = new System.Windows.Forms.Button();
+            this.tbElapsed = new System.Windows.Forms.TextBox();
             this.tableLayoutPanel1.SuspendLayout();
             this.flowLayoutPanel7.SuspendLayout();
             this.flowLayoutPanel6.SuspendLayout();
@@ -183,6 +184,7 @@
             this.flowLayoutPanel4.Controls.Add(this.tbArah);
             this.flowLayoutPanel4.Controls.Add(this.btTesting);
             this.flowLayoutPanel4.Controls.Add(this.btCancelTest);
+            this.flowLayoutPanel4.Controls.Add(this.tbElapsed);
             this.flowLayoutPanel4.Location = new System.Drawing.Point(519, 3);
             this.flowLayoutPanel4.Name = "flowLayoutPanel4";
             this.flowLayoutPanel4.Size = new System.Drawing.Size(252, 135);
@@ -331,6 +333,14 @@
             this.btMundur.UseVisualStyleBackColor = true;
             this.btMundur.Click += new System.EventHandler(this.btMundur_Click);
             // 
+            // tbElapsed
+            // 
+            this.tbElapsed.Location = new System.Drawing.Point(3, 58);
+            this.tbElapsed.Name = "tbElapsed";
+            this.tbElapsed.ReadOnly = true;
+            this.tbElapsed.Size = new System.Drawing.Size(170, 20);
+            this.tbElapsed.TabIndex = 4;
+            // 
             // FormNavigation
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -386,6 +396,7 @@
         private System.Windows.Forms.Button btAmbilDataLagi;
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel1;
         private System.Windows.Forms.Button btMundur;
+        private System.Windows.Forms.TextBox tbElapsed;
     }
 }
 
