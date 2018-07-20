@@ -25,6 +25,10 @@ using System.IO.Ports;
 using Accord.MachineLearning;
 using Accord.Statistics.Analysis;
 using EmotivController.NeuralNetwork;
+using Accord.IO;
+using Accord.Neuro;
+using Accord.Neuro.Learning;
+
 namespace EmotivController
 {
     public partial class FormNavigation : Form
@@ -49,7 +53,7 @@ namespace EmotivController
         private static int _frekuensiSampling = 128;
         private static int _second = 8;
         private static int _jumlahData = _frekuensiSampling * _second;
-        private static int _secondTesting = 2;
+        private static int _secondTesting = 4;
         private static int _timeTesting = _frekuensiSampling * _secondTesting;
         private Stopwatch watch;
         private Stopwatch _watchTesting;
@@ -135,15 +139,15 @@ namespace EmotivController
                             _watchTesting = new Stopwatch();
                             _watchTesting.Start();
                             var feature = preprocessingSignalTesting(_dataF3, _dataF4, _dataF7, _dataF8, _dataFC5, _dataFC6);
-                            int dec = machine.Decide(feature)[0];
+                            int dec = ldas.Classify(feature)[0];
                             clearList();
                             sendCommand(dec);
-                            watch.Stop();
+                            _watchTesting.Stop();
                             MethodInvoker action = delegate{
                                 tbElapsed.Text = "Respond Time"+_watchTesting.ElapsedMilliseconds+" ms" ;
                             };
                             tbElapsed.BeginInvoke(action);
-                            Thread.Sleep(TimeSpan.FromSeconds(3));//rest 3 seconds
+                            Thread.Sleep(TimeSpan.FromSeconds(1));//rest 3 seconds
                         }
                         else
                         {
@@ -795,10 +799,13 @@ namespace EmotivController
             {
                 for(int j = 0; j < feature[i].Length; j++)
                 {
-                    File.AppendAllText(filename, feature[i][j]+";");
                     if (i == feature.Length - 1 &&  j == feature[feature.Length - 1].Length - 1)
                     {
                         File.AppendAllText(filename, feature[i][j]  + "" + Environment.NewLine);
+                    }
+                    else
+                    {
+                        File.AppendAllText(filename, feature[i][j] + ";");
                     }
                 }
             }
@@ -861,17 +868,19 @@ namespace EmotivController
 
         private void btTraining_Click(object sender, EventArgs e)
         {
-            svm();
+            lda();
+            //knn();
         }
+        KNearestNeighbors knns;
         private void knn()
         {
             var pair = loadOneFile();
             var feature = pair.Item1;
             var kelas = pair.Item2;
-            var knn = new KNearestNeighbors(k: 4);
-            knn.NumberOfInputs = 36;
-            knn.Learn(feature, kelas);
-            int[] predicted = knn.Decide(feature);
+            knns = new KNearestNeighbors(k: 4);
+            knns.NumberOfInputs = 36;
+            knns.Learn(feature, kelas);
+            int[] predicted = knns.Decide(feature);
             accurate(kelas, predicted);
         }
         private void svm()
@@ -942,15 +951,17 @@ namespace EmotivController
             tbAkurasi.Text = accurate + "%";
             MessageBox.Show("Learning Done, Thankyou!");
             btTesting.Enabled = true;
+            machine.Save("svm.bin");
         }
+        private LinearDiscriminantAnalysis ldas;
         private void lda()
         {
             var pair = loadOneFile();
             var feature = pair.Item1;
             var kelas = pair.Item2;
-            var lda = new LinearDiscriminantAnalysis(feature,kelas);
-            lda.Compute();
-            var predicted = lda.Classify(feature);
+            ldas = new LinearDiscriminantAnalysis(feature,kelas);
+            ldas.Compute();
+            var predicted = ldas.Classify(feature);
             accurate(kelas, predicted);
         }
         private void kda()
@@ -964,20 +975,7 @@ namespace EmotivController
             int[] predicted = kda.Classify(feature);
             accurate(kelas, predicted);
         }
-        private void bpnn()
-        {
-            var pair = loadOneFile();
-            var feature = pair.Item1;
-            var kelas = pair.Item2;
-            int numInput = 36; // number features
-            int numHidden = 5;
-            int numOutput = 5; // number of classes for Y
-            var bpnn = new Backpropagation(numInput, numHidden, numOutput);
-            int maxEpochs = 1000;
-            double learnRate = 0.05;
-            double momentum = 0.01;
-            double[] weights = bpnn.Train(feature, maxEpochs, learnRate, momentum);
-        }
+
         private void accurate(int[] kelas, int[] predicted)
         {
             double temp = 0;

@@ -39,3 +39,7 @@ C:\Users\Frans\Documents\GitHub\EmotivController\EmotivController\bin\Debug\Arct
 C:\Users\Frans\Documents\GitHub\EmotivController\EmotivController\bin\Debug\Arction.WinForms.SignalProcessing.SignalTools.dll
 C:\Users\Frans\Documents\GitHub\EmotivController\EmotivController\bin\Debug\Arction.WinForms.Charting.LightningChartUltimate.xml
 C:\Users\Frans\Documents\GitHub\EmotivController\EmotivController\bin\Debug\Arction.WinForms.SignalProcessing.SignalTools.xml
+C:\Users\Frans\Documents\GitHub\EmotivController\EmotivController\bin\Debug\Accord.Genetic.dll
+C:\Users\Frans\Documents\GitHub\EmotivController\EmotivController\bin\Debug\Accord.Neuro.dll
+C:\Users\Frans\Documents\GitHub\EmotivController\EmotivController\bin\Debug\Accord.Genetic.xml
+C:\Users\Frans\Documents\GitHub\EmotivController\EmotivController\bin\Debug\Accord.Neuro.xml
