@@ -44,6 +44,7 @@
             this.tbArah = new System.Windows.Forms.TextBox();
             this.btTesting = new System.Windows.Forms.Button();
             this.btCancelTest = new System.Windows.Forms.Button();
+            this.tbElapsed = new System.Windows.Forms.TextBox();
             this.flowLayoutPanel3 = new System.Windows.Forms.FlowLayoutPanel();
             this.btMaju = new System.Windows.Forms.Button();
             this.flowLayoutPanel2 = new System.Windows.Forms.FlowLayoutPanel();
@@ -55,7 +56,6 @@
             this.btAmbilDataLagi = new System.Windows.Forms.Button();
             this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
             this.btMundur = new System.Windows.Forms.Button();
-            this.tbElapsed = new System.Windows.Forms.TextBox();
             this.tableLayoutPanel1.SuspendLayout();
             this.flowLayoutPanel7.SuspendLayout();
             this.flowLayoutPanel6.SuspendLayout();
@@ -220,6 +220,14 @@
             this.btCancelTest.UseVisualStyleBackColor = true;
             this.btCancelTest.Click += new System.EventHandler(this.btCancelTest_Click);
             // 
+            // tbElapsed
+            // 
+            this.tbElapsed.Location = new System.Drawing.Point(3, 58);
+            this.tbElapsed.Name = "tbElapsed";
+            this.tbElapsed.ReadOnly = true;
+            this.tbElapsed.Size = new System.Drawing.Size(170, 20);
+            this.tbElapsed.TabIndex = 4;
+            // 
             // flowLayoutPanel3
             // 
             this.flowLayoutPanel3.Controls.Add(this.btMaju);
@@ -332,14 +340,6 @@
             this.btMundur.Text = "Mundur";
             this.btMundur.UseVisualStyleBackColor = true;
             this.btMundur.Click += new System.EventHandler(this.btMundur_Click);
-            // 
-            // tbElapsed
-            // 
-            this.tbElapsed.Location = new System.Drawing.Point(3, 58);
-            this.tbElapsed.Name = "tbElapsed";
-            this.tbElapsed.ReadOnly = true;
-            this.tbElapsed.Size = new System.Drawing.Size(170, 20);
-            this.tbElapsed.TabIndex = 4;
             // 
             // FormNavigation
             // 

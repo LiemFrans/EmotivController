@@ -25,10 +25,6 @@ using System.IO.Ports;
 using Accord.MachineLearning;
 using Accord.Statistics.Analysis;
 using EmotivController.NeuralNetwork;
-using Accord.IO;
-using Accord.Neuro;
-using Accord.Neuro.Learning;
-
 namespace EmotivController
 {
     public partial class FormNavigation : Form
@@ -51,14 +47,15 @@ namespace EmotivController
         private List<double> _dataFC5 = new List<double>();
         private List<double> _dataFC6 = new List<double>();
         private static int _frekuensiSampling = 128;
-        private static int _second = 8;
+        private static int _second = 16;
         private static int _jumlahData = _frekuensiSampling * _second;
-        private static int _secondTesting = 4;
+        private static int _secondTesting = 2;
         private static int _timeTesting = _frekuensiSampling * _secondTesting;
         private Stopwatch watch;
         private Stopwatch _watchTesting;
         private MulticlassSupportVectorMachine<Gaussian> machine;
         private SerialPort _myport;
+        private Focus focus;
         public FormNavigation()
         {
             InitializeComponent();
@@ -103,22 +100,48 @@ namespace EmotivController
                 {
                     Console.WriteLine("error : " + ex.Message);
                 }
-                if (isParsed&&_selectedArrow!="")
+                if (isParsed && _selectedArrow != "")
                 {
-                    if (_isTraining&&_selectedArrow!="testing")
+                    if (_isTraining && _selectedArrow != "testing")
                     {
                         // Place delegate on the Dispatcher.
                         if (_dataF3.Count() == _jumlahData)
                         {
                             string selectArrow = _selectedArrow;
+                            MethodInvoker action = delegate
+                            {
+                                focus.Hide();
+                            };
+                            var dataF31 = _dataF3.Take(_dataF3.Count / 2).ToList();
+                            var dataF32 = _dataF3.Skip(_dataF3.Count / 2).ToList();
+
+                            var dataF41 = _dataF4.Take(_dataF4.Count / 2).ToList();
+                            var dataF42 = _dataF4.Skip(_dataF4.Count / 2).ToList();
+
+                            var dataF71 = _dataF7.Take(_dataF7.Count / 2).ToList();
+                            var dataF72 = _dataF7.Skip(_dataF7.Count / 2).ToList();
+
+                            var dataF81 = _dataF8.Take(_dataF8.Count / 2).ToList();
+                            var dataF82 = _dataF8.Skip(_dataF8.Count / 2).ToList();
+
+                            var dataFC51 = _dataFC5.Take(_dataFC5.Count / 2).ToList();
+                            var dataFC52 = _dataFC5.Skip(_dataFC5.Count / 2).ToList();
+
+                            var dataFC61 = _dataFC6.Take(_dataFC6.Count / 2).ToList();
+                            var dataFC62 = _dataFC6.Skip(_dataFC6.Count / 2).ToList();
+                            Console.WriteLine("masuk");
+                            focus.BeginInvoke(action);
                             string message = "Pengambilan Data sinyal otak selesai (" + selectArrow + ")";
                             string caption = "Setelah Klik OK, akan melakukan penyimpanan data!";
-                            MessageBoxButtons buttons = MessageBoxButtons.YesNo;
+                            MessageBoxButtons buttons = MessageBoxButtons.OK;
                             DialogResult result;
                             result = MessageBox.Show(message, caption, buttons);
-                            if (result == System.Windows.Forms.DialogResult.Yes)
+                            if (result == System.Windows.Forms.DialogResult.OK)
                             {
-                                preprocessingSignalTraining(_dataF3, _dataF4, _dataF7, _dataF8, _dataFC5, _dataFC6, selectArrow);
+                                //preprocessingSignalTraining(_dataF3, _dataF4, _dataF7, _dataF8, _dataFC5, _dataFC6, selectArrow);
+                                preprocessingSignalTraining(dataF31, dataF41, dataF71, dataF81, dataFC51, dataFC61, selectArrow);
+                                preprocessingSignalTraining(dataF32, dataF42, dataF72, dataF82, dataFC52, dataFC62, selectArrow);
+                                MessageBox.Show("Save Done");
                                 clearList();
                             }
                         }
@@ -132,22 +155,23 @@ namespace EmotivController
                             _dataFC6.Add(data.FC6.value - mean);
                         }
                     }
-                    else if(_isTraining==false&&_selectedArrow=="testing")
+                    else if (_isTraining == false && _selectedArrow == "testing")
                     {
-                        if (_dataF3.Count()== _timeTesting)
+                        if (_dataF3.Count() == _timeTesting)
                         {
                             _watchTesting = new Stopwatch();
                             _watchTesting.Start();
                             var feature = preprocessingSignalTesting(_dataF3, _dataF4, _dataF7, _dataF8, _dataFC5, _dataFC6);
-                            int dec = ldas.Classify(feature)[0];
+                            int dec = machine.Decide(feature)[0];
                             clearList();
                             sendCommand(dec);
                             _watchTesting.Stop();
-                            MethodInvoker action = delegate{
-                                tbElapsed.Text = "Respond Time"+_watchTesting.ElapsedMilliseconds+" ms" ;
+                            MethodInvoker action = delegate
+                            {
+                                tbElapsed.Text = "Respond Time" + _watchTesting.ElapsedMilliseconds + " ms";
                             };
                             tbElapsed.BeginInvoke(action);
-                            Thread.Sleep(TimeSpan.FromSeconds(1));//rest 3 seconds
+                            Thread.Sleep(TimeSpan.FromSeconds(3));//rest 3 seconds
                         }
                         else
                         {
@@ -162,73 +186,6 @@ namespace EmotivController
                 }
             }
         }
-
-        //public void OnMessageResult(object sender, MessageEventArgs e)
-        //{
-        //    if (isRunning == false)
-        //    {
-        //        isRunning = true;
-        //        Console.WriteLine(isRunning);
-        //        watch = new Stopwatch();
-        //        Console.WriteLine("start watch");
-        //        watch.Start();
-        //    }
-        //    else
-        //    {
-        //        Console.WriteLine("Masuk");
-        //        if (watch.Elapsed.Seconds != 5)
-        //        {
-        //            old_data = e.Data;
-        //            DataModel data = new DataModel();
-        //            bool isParsed = false;
-        //            float mean = (float)4167.9950522878;
-        //            try
-        //            {
-        //                data = new JavaScriptSerializer().Deserialize<DataModel>(e.Data);
-        //                isParsed = true;
-        //            }
-        //            catch (Exception ex)
-        //            {
-        //                MessageBox.Show("Error " + ex);
-        //                Console.WriteLine("error : " + ex.Message);
-        //            }
-        //            if (isParsed)
-        //            {
-        //                _dataAF3.Add(data.AF3.value - mean);
-        //                _dataAF4.Add(data.AF3.value - mean);
-        //                _dataF3.Add(data.F3.value - mean);
-        //                _dataF4.Add(data.F4.value - mean);
-        //                _dataF7.Add(data.F7.value - mean);
-        //                _dataF8.Add(data.F8.value - mean);
-        //                _dataFC5.Add(data.FC5.value - mean);
-        //                _dataFC6.Add(data.FC6.value - mean);
-        //            }
-        //        }
-        //        else if (watch.Elapsed.Seconds >= 5)
-        //        {
-        //            if (_dataAF3.Count==_jumlahData)
-        //            {
-        //                Console.WriteLine("Stop");
-        //                //ws.Close();
-        //                ws.Send("STOP");
-        //                watch.Stop();
-        //                isRunning = false;
-        //                string message = "Done";
-        //                string caption = "Done Capture Signal";
-        //                MessageBoxButtons buttons = MessageBoxButtons.OK;
-        //                DialogResult result;
-        //                result = MessageBox.Show(message, caption, buttons);
-        //                ws.Close();
-        //                if (result == System.Windows.Forms.DialogResult.Yes)
-        //                {
-
-        //                }
-        //            }
-
-        //        }
-        //    }
-
-        //}
 
         private void FormNavigation_FormClosed(object sender, FormClosedEventArgs e)
         {
@@ -253,22 +210,10 @@ namespace EmotivController
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("Server Already exit"+e);
+                    Console.WriteLine("Server Already exit" + e);
                 }
             }
         }
-                
-        //private void initializedList()
-        //{
-        //    _dataFC5 = new List<float>();
-        //    _dataAF4 = new List<float>();
-        //    _dataF7 = new List<float>();
-        //    _dataF8 = new List<float>();
-        //    _dataF3 = new List<float>();
-        //    _dataF4 = new List<float>();
-        //    _dataFC5 = new List<float>();
-        //    _dataFC6 = new List<float>();
-        //}
 
         private void clearList()
         {
@@ -279,7 +224,7 @@ namespace EmotivController
             _dataFC5.Clear();
             _dataFC6.Clear();
         }
-        
+
         private void btfromZero_Click(object sender, EventArgs e)
         {
             btKiri.Enabled = true;
@@ -290,17 +235,11 @@ namespace EmotivController
             btTraining.Enabled = true;
         }
 
-        //serverStart DO WORK
         private void serverStart_DoWork(object sender, DoWorkEventArgs e)
         {
             var psi = new ProcessStartInfo("CMD.exe", "/K python C:\\Users\\Frans\\Documents\\GitHub\\EmoGuy\\socketEmoGuy.py");
             cmdProcess = Process.Start(psi);
         }
-        
-        //transport Signal DO WORK
-
-
-        //Preprocessing
 
         private double[] DFT(double[] signal)
         {
@@ -313,7 +252,7 @@ namespace EmotivController
             {
                 re[i] = 0;
                 im[i] = 0;
-                for(int j = 0; j < jumlahData; j++)
+                for (int j = 0; j < jumlahData; j++)
                 {
                     re[i] = re[i] + signal[j] * Math.Cos(2 * Math.PI * j * i) / jumlahData;
                     im[i] = im[i] - signal[j] * Math.Sin(2 * Math.PI * j * i) / jumlahData;
@@ -332,14 +271,14 @@ namespace EmotivController
             double r = 0.8;
             int jumlahData = signal.Length;
             double theta = 2 * Math.PI * _frequencyCutOffBPF / _frekuensiSampling;
-            double gain= ((1 - r) * Math.Sqrt(1 - 2 * r * Math.Cos(2 * theta) + r * r)) / 2 * Math.Abs(Math.Sin(theta));
+            double gain = ((1 - r) * Math.Sqrt(1 - 2 * r * Math.Cos(2 * theta) + r * r)) / 2 * Math.Abs(Math.Sin(theta));
             double[] bpf = new double[jumlahData];
             Parallel.For(0, jumlahData, i =>
             {
                 switch (i)
                 {
                     case 0:
-                        bpf[i] = 2 * r * Math.Cos(theta) * 0 - (Math.Pow(r, 2) * 0) + gain * (signal[i]-0);
+                        bpf[i] = 2 * r * Math.Cos(theta) * 0 - (Math.Pow(r, 2) * 0) + gain * (signal[i] - 0);
                         break;
                     case 1:
                         bpf[i] = 2 * r * Math.Cos(theta) * bpf[i - 1] - (Math.Pow(r, 2) * 0) + gain * (signal[i] - 0);
@@ -350,86 +289,6 @@ namespace EmotivController
                 }
             });
             return bpf;
-        }
-
-        private double[] filterBPFOrde4(double[] signal, int jumlahData)
-        {
-            double r = 0.8;
-            double theta = 2 * Math.PI * (_frequencyCutOffBPF / _frekuensiSampling);
-            double[] bpfOrde4 = new double[jumlahData];
-            double gain = ((1 - r) * Math.Sqrt(1 - 2 * r * Math.Cos(2 * theta) + r * r)) / 4 * Math.Abs(Math.Sin(theta));
-            //for (int i = 0; i < _jumlahData; i++)
-            Parallel.For(0, jumlahData, i =>
-            {
-                    switch (i)
-                    {
-                        case 0:
-                            bpfOrde4[i] = 4 * r * Math.Cos(theta) * 0 - 4 * r * r * Math.Sqrt(Math.Cos(theta)) * 0 - 2 * r * r * 0 + 4 * Math.Pow(r, 3) * Math.Cos(theta) * 0
-                                 - Math.Pow(r, 4) * 0 + gain * (signal[i] - 2 * signal[0] + signal[0]);
-                            break;
-                        case 1:
-                            bpfOrde4[i] = 4 * r * Math.Cos(theta) * bpfOrde4[i - 1] - 4 * r * r * Math.Sqrt(Math.Cos(theta)) * bpfOrde4[0] - 2 * r * r * bpfOrde4[0] + 4 * Math.Pow(r, 3) * Math.Cos(theta) * bpfOrde4[0]
-                                 - Math.Pow(r, 4) * bpfOrde4[0] + gain * (signal[i] - 2 * signal[0] + signal[0]);
-                            break;
-                        case 2:
-                            bpfOrde4[i] = 4 * r * Math.Cos(theta) * bpfOrde4[i - 1] - 4 * r * r * Math.Sqrt(Math.Cos(theta)) * bpfOrde4[i - 2] - 2 * r * r * bpfOrde4[i - 2] + 4 * Math.Pow(r, 3) * Math.Cos(theta) * bpfOrde4[0]
-                                 - Math.Pow(r, 4) * bpfOrde4[0] + gain * (signal[i] - 2 * signal[i - 2] + signal[0]);
-                            break;
-                        case 3:
-                            bpfOrde4[i] = 4 * r * Math.Cos(theta) * bpfOrde4[i - 1] - 4 * r * r * Math.Sqrt(Math.Cos(theta)) * bpfOrde4[i - 2] - 2 * r * r * bpfOrde4[i - 2] + 4 * Math.Pow(r, 3) * Math.Cos(theta) * bpfOrde4[i - 3]
-                                 - Math.Pow(r, 4) * bpfOrde4[0] + gain * (signal[i] - 2 * signal[i - 2] + signal[0]);
-                            break;
-                        case 4:
-                            bpfOrde4[i] = 4 * r * Math.Cos(theta) * bpfOrde4[i - 1] - 4 * r * r * Math.Sqrt(Math.Cos(theta)) * bpfOrde4[i - 2] - 2 * r * r * bpfOrde4[i - 2] + 4 * Math.Pow(r, 3) * Math.Cos(theta) * bpfOrde4[i - 3]
-                                 - Math.Pow(r, 4) * bpfOrde4[i - 4] + gain * (signal[i] - 2 * signal[i - 2] + signal[i - 4]);
-                            break;
-                        default:
-                            bpfOrde4[i] = 4 * r * Math.Cos(theta) * bpfOrde4[i - 1] - 4 * r * r * Math.Sqrt(Math.Cos(theta)) * bpfOrde4[i - 2] - 2 * r * r * bpfOrde4[i - 2] + 4 * Math.Pow(r, 3) * Math.Cos(theta) * bpfOrde4[i - 3]
-                                 - Math.Pow(r, 4) * bpfOrde4[i - 4] + gain * (signal[i] - 2 * signal[i - 2] + signal[i - 4]);
-                            break;
-                    }
-            });
-            return bpfOrde4;
-        }
-
-        private double[] filterBPFOrde6(double[] signal)
-        {
-            double r = 0.8;
-            double theta = 2 * Math.PI * _frequencyCutOffBPF / _frekuensiSampling;
-            int jumlahData = signal.Length;
-            double[] bpfOrde6 = new double[jumlahData];
-            //for (int i = 0; i <_jumlahData; i++)
-            Parallel.For(0, jumlahData, i =>
-            {
-                //for (int i = 0; i < jumlahData; i++)
-                //{
-                switch (i)
-                {
-                    case 0:
-                        bpfOrde6[i] = 6 * r * Math.Cos(theta) * 0 - Math.Pow(r, 2) * (3 + 12 * Math.Sqrt(Math.Cos(theta))) * 0 + 4 * Math.Pow(r, 3) * Math.Cos(theta) * (3 + 2 * Math.Sqrt(Math.Cos(theta))) * 0 - Math.Pow(r, 4) * (3 + 12 * Math.Sqrt(Math.Cos(theta))) * 0 + 6 * Math.Pow(r, 5) * Math.Cos(theta) * 0 + Math.Pow(r, 6) * 0 + signal[i] - 3 * signal[0] + 3 * signal[0] - 1 * signal[0];
-                        break;
-                    case 1:
-                        bpfOrde6[i] = 6 * r * Math.Cos(theta) * bpfOrde6[i - 1] - Math.Pow(r, 2) * (3 + 12 * Math.Sqrt(Math.Cos(theta))) * bpfOrde6[0] + 4 * Math.Pow(r, 3) * Math.Cos(theta) * (3 + 2 * Math.Sqrt(Math.Cos(theta))) * bpfOrde6[0] - Math.Pow(r, 4) * (3 + 12 * Math.Sqrt(Math.Cos(theta))) * bpfOrde6[0] + 6 * Math.Pow(r, 5) * Math.Cos(theta) * bpfOrde6[0] + Math.Pow(r, 6) * bpfOrde6[0] + signal[i] - 3 * signal[0] + 3 * signal[0] - 1 * signal[0];
-                        break;
-                    case 2:
-                        bpfOrde6[i] = 6 * r * Math.Cos(theta) * bpfOrde6[i - 1] - Math.Pow(r, 2) * (3 + 12 * Math.Sqrt(Math.Cos(theta))) * bpfOrde6[i - 2] + 4 * Math.Pow(r, 3) * Math.Cos(theta) * (3 + 2 * Math.Sqrt(Math.Cos(theta))) * bpfOrde6[0] - Math.Pow(r, 4) * (3 + 12 * Math.Sqrt(Math.Cos(theta))) * bpfOrde6[0] + 6 * Math.Pow(r, 5) * Math.Cos(theta) * bpfOrde6[0] + Math.Pow(r, 6) * bpfOrde6[0] + signal[i] - 3 * signal[i - 2] + 3 * signal[0] - 1 * signal[0];
-                        break;
-                    case 3:
-                        bpfOrde6[i] = 6 * r * Math.Cos(theta) * bpfOrde6[i - 1] - Math.Pow(r, 2) * (3 + 12 * Math.Sqrt(Math.Cos(theta))) * bpfOrde6[i - 2] + 4 * Math.Pow(r, 3) * Math.Cos(theta) * (3 + 2 * Math.Sqrt(Math.Cos(theta))) * bpfOrde6[i - 3] - Math.Pow(r, 4) * (3 + 12 * Math.Sqrt(Math.Cos(theta))) * bpfOrde6[0] + 6 * Math.Pow(r, 5) * Math.Cos(theta) * bpfOrde6[0] + Math.Pow(r, 6) * bpfOrde6[0] + signal[i] - 3 * signal[i - 2] + 3 * signal[0] - 1 * signal[0];
-                        break;
-                    case 4:
-                        bpfOrde6[i] = 6 * r * Math.Cos(theta) * bpfOrde6[i - 1] - Math.Pow(r, 2) * (3 + 12 * Math.Sqrt(Math.Cos(theta))) * bpfOrde6[i - 2] + 4 * Math.Pow(r, 3) * Math.Cos(theta) * (3 + 2 * Math.Sqrt(Math.Cos(theta))) * bpfOrde6[i - 3] - Math.Pow(r, 4) * (3 + 12 * Math.Sqrt(Math.Cos(theta))) * bpfOrde6[i - 4] + 6 * Math.Pow(r, 5) * Math.Cos(theta) * bpfOrde6[0] + Math.Pow(r, 6) * bpfOrde6[0] + signal[i] - 3 * signal[i - 2] + 3 * signal[i - 4] - 1 * signal[0];
-                        break;
-                    case 5:
-                        bpfOrde6[i] = 6 * r * Math.Cos(theta) * bpfOrde6[i - 1] - Math.Pow(r, 2) * (3 + 12 * Math.Sqrt(Math.Cos(theta))) * bpfOrde6[i - 2] + 4 * Math.Pow(r, 3) * Math.Cos(theta) * (3 + 2 * Math.Sqrt(Math.Cos(theta))) * bpfOrde6[i - 3] - Math.Pow(r, 4) * (3 + 12 * Math.Sqrt(Math.Cos(theta))) * bpfOrde6[i - 4] + 6 * Math.Pow(r, 5) * Math.Cos(theta) * bpfOrde6[i - 5] + Math.Pow(r, 6) * bpfOrde6[0] + signal[i] - 3 * signal[i - 2] + 3 * signal[i - 4] - 1 * signal[0];
-                        break;
-                    default:
-                        bpfOrde6[i] = 6 * r * Math.Cos(theta) * bpfOrde6[i - 1] - Math.Pow(r, 2) * (3 + 12 * Math.Sqrt(Math.Cos(theta))) * bpfOrde6[i - 2] + 4 * Math.Pow(r, 3) * Math.Cos(theta) * (3 + 2 * Math.Sqrt(Math.Cos(theta))) * bpfOrde6[i - 3] - Math.Pow(r, 4) * (3 + 12 * Math.Sqrt(Math.Cos(theta))) * bpfOrde6[i - 4] + 6 * Math.Pow(r, 5) * Math.Cos(theta) * bpfOrde6[i - 5] + Math.Pow(r, 6) * bpfOrde6[i - 6] + signal[i] - 3 * signal[i - 2] + 3 * signal[i - 4] - 1 * signal[i - 6];
-                        break;
-                }
-                //}
-            });
-            return bpfOrde6;
         }
 
         private double[] filterBSF(double[] signal)//notch
@@ -458,7 +317,7 @@ namespace EmotivController
             return bsf;
         }
 
-        private double[] windowing(double[] signal)
+        private double[] Hanning(double[] signal)
         {
             int jumlahData = signal.Length;
             double[] window = new double[signal.Length];
@@ -466,6 +325,22 @@ namespace EmotivController
             Parallel.For(0, jumlahData, i =>
             {
                 window[i] = 0.5 * (1 - Math.Cos(2 * Math.PI * i / (jumlahData - 1)));
+            });
+            Parallel.For(0, jumlahData, i =>
+            {
+                windowFinal[i] = signal[i] * window[i];
+            });
+            return windowFinal;
+        }
+
+        private double[] Hamming(double[] signal)
+        {
+            int jumlahData = signal.Length;
+            double[] window = new double[signal.Length];
+            double[] windowFinal = new double[signal.Length];
+            Parallel.For(0, jumlahData, i =>
+            {
+                window[i] = 0.54 - 0.46 * (Math.Cos(2 * Math.PI * i / (jumlahData - 1)));
             });
             Parallel.For(0, jumlahData, i =>
             {
@@ -484,12 +359,13 @@ namespace EmotivController
                 fftComplex[i] = new Complex(signal[i], 0.0); // make it complex format
             });
             Accord.Math.FourierTransform.FFT(fftComplex, Accord.Math.FourierTransform.Direction.Forward);
-            Parallel.For(0, nPoint, i => {
+            Parallel.For(0, nPoint, i =>
+            {
                 fft[i] = fftComplex[i].Magnitude; // back to double
             });
             return fft;
         }
-        
+
         private double[] extractionFeature(double[] signal)
         {
             double[] feature = new double[6];
@@ -502,12 +378,9 @@ namespace EmotivController
             return feature;
         }
 
-        private double mean(double[]signal)
+        private double mean(double[] signal)
         {
-            double zigma = 0;
-            var output = signal
-                .Select(w => zigma += w);
-            return (zigma / signal.Length);
+            return signal.Average();
         }
         private double modus(double[] signal)
         {
@@ -518,15 +391,14 @@ namespace EmotivController
         }
         private double min(double[] signal)
         {
-            Array.Sort(signal);
-            return signal[0];
+            return signal.Min();
         }
         private double max(double[] signal)
         {
             var desc = from s in signal
                        orderby s descending
                        select s;
-            return desc.ToArray()[0];
+            return desc.First();
         }
         private double standardDeviation(double[] signal)
         {
@@ -551,38 +423,36 @@ namespace EmotivController
             }
         }
 
-        //private double[] extractionFeature(double[] signal)
-        //{
-
-        //}
-
         private void preprocessingSignalTraining(
             List<double> dataF3, List<double> dataF4, List<double> dataF7, List<double> dataF8,
             List<double> dataFC5, List<double> dataFC6, string selectArrow)
         {
             double[][] BPFOrde2 = new double[6][];
             double[][] BSF = new double[6][];
-            double[][] window = new double[6][];
-            double[][] vFFT = new double[6][];
-            double[][] feature = new double[6][];
-                BPFOrde2[0] = filterBPFOrde2(dataF3.ToArray());
-                savePerNewFile(dataF3.ToArray(), "RAW", "F3", selectArrow);
-                savePerNewFile(BPFOrde2[0], "BPF", "AF4", selectArrow);
-                BPFOrde2[1] = filterBPFOrde2(dataF4.ToArray());
-                savePerNewFile(dataF4.ToArray(), "RAW", "F4", selectArrow);
-                savePerNewFile(BPFOrde2[1], "BPF", "AF4", selectArrow);
-                BPFOrde2[2] = filterBPFOrde2(dataF7.ToArray());
-                savePerNewFile(dataF7.ToArray(), "RAW", "F7", selectArrow);
-                savePerNewFile(BPFOrde2[2], "BPF", "F7", selectArrow);
-                BPFOrde2[3] = filterBPFOrde2(dataF8.ToArray());
-                savePerNewFile(dataF8.ToArray(), "RAW", "F8", selectArrow);
-                savePerNewFile(BPFOrde2[3], "BPF", "F8", selectArrow);
-                BPFOrde2[4] = filterBPFOrde2(dataFC5.ToArray());
-                savePerNewFile(dataFC5.ToArray(), "RAW", "FC5", selectArrow);
-                savePerNewFile(BPFOrde2[4], "BPF", "FC5", selectArrow);
-                BPFOrde2[5] = filterBPFOrde2(dataFC6.ToArray());
-                savePerNewFile(dataFC6.ToArray(), "RAW", "FC6", selectArrow);
-                savePerNewFile(BPFOrde2[5], "BPF", "FC6", selectArrow);
+            double[][] windowHanning = new double[6][];
+            double[][] windowHamming = new double[6][];
+            double[][] vFFTHanning = new double[6][];
+            double[][] vFFTHamming = new double[6][];
+            double[][] featureHanning = new double[6][];
+            double[][] featureHamming = new double[6][];
+            BPFOrde2[0] = filterBPFOrde2(dataF3.ToArray());
+            savePerNewFile(dataF3.ToArray(), "RAW", "F3", selectArrow);
+            savePerNewFile(BPFOrde2[0], "BPF", "AF4", selectArrow);
+            BPFOrde2[1] = filterBPFOrde2(dataF4.ToArray());
+            savePerNewFile(dataF4.ToArray(), "RAW", "F4", selectArrow);
+            savePerNewFile(BPFOrde2[1], "BPF", "AF4", selectArrow);
+            BPFOrde2[2] = filterBPFOrde2(dataF7.ToArray());
+            savePerNewFile(dataF7.ToArray(), "RAW", "F7", selectArrow);
+            savePerNewFile(BPFOrde2[2], "BPF", "F7", selectArrow);
+            BPFOrde2[3] = filterBPFOrde2(dataF8.ToArray());
+            savePerNewFile(dataF8.ToArray(), "RAW", "F8", selectArrow);
+            savePerNewFile(BPFOrde2[3], "BPF", "F8", selectArrow);
+            BPFOrde2[4] = filterBPFOrde2(dataFC5.ToArray());
+            savePerNewFile(dataFC5.ToArray(), "RAW", "FC5", selectArrow);
+            savePerNewFile(BPFOrde2[4], "BPF", "FC5", selectArrow);
+            BPFOrde2[5] = filterBPFOrde2(dataFC6.ToArray());
+            savePerNewFile(dataFC6.ToArray(), "RAW", "FC6", selectArrow);
+            savePerNewFile(BPFOrde2[5], "BPF", "FC6", selectArrow);
             string[] signal = new string[6] { "F3", "F4", "F7", "F8", "FC5", "FC6" };
             Parallel.For(0, 6, i =>
             {
@@ -591,19 +461,25 @@ namespace EmotivController
             });
             Parallel.For(0, 6, i =>
             {
-                window[i] = windowing(BSF[i]);
-                savePerNewFile(BSF[i], "Window", signal[i], selectArrow);
+                windowHanning[i] = Hanning(BSF[i]);
+                windowHamming[i] = Hamming(BSF[i]);
+                savePerNewFile(windowHanning[i], "Hanning", signal[i], selectArrow);
+                savePerNewFile(windowHamming[i], "Hamming", signal[i], selectArrow);
             });
             Parallel.For(0, 6, i =>
             {
-                vFFT[i] = FFT(window[i]);
-                savePerNewFile(vFFT[i], "FFT", signal[i], selectArrow);
+                vFFTHanning[i] = FFT(windowHanning[i]);
+                vFFTHamming[i] = FFT(windowHamming[i]);
+                savePerNewFile(vFFTHanning[i], "FFT_Hanning", signal[i], selectArrow);
+                savePerNewFile(vFFTHamming[i], "FFT_Hamming", signal[i], selectArrow);
             });
             Parallel.For(0, 6, i =>
             {
-                feature[i] = extractionFeature(vFFT[i]);
+                featureHanning[i] = extractionFeature(vFFTHanning[i]);
+                featureHamming[i] = extractionFeature(vFFTHamming[i]);
             });
-            saveOneFile(feature, selectArrow);
+            saveOneFile(featureHanning, selectArrow, "hanning");
+            saveOneFile(featureHamming, selectArrow, "hamming");
             disableEnableButton();
         }
 
@@ -629,7 +505,7 @@ namespace EmotivController
             });
             Parallel.For(0, 6, i =>
             {
-                window[i] = windowing(BSF[i]);
+                window[i] = Hanning(BSF[i]);
             });
             Parallel.For(0, 6, i =>
             {
@@ -641,9 +517,9 @@ namespace EmotivController
             });
             var ft = new double[1][];
             var perchannel = new List<double>();
-            foreach(var f in feature)
+            foreach (var f in feature)
             {
-                foreach(var c in f)
+                foreach (var c in f)
                 {
                     perchannel.Add(c);
                 }
@@ -690,20 +566,23 @@ namespace EmotivController
                     break;
             }
         }
-
+        private Stopwatch waiting;
         private void btKiri_Click(object sender, EventArgs e)
         {
             string message = "Pengambilan Data sinyal otak ke kiri";
             string caption = "Setelah Klik OK, akan melakukan pengambilan data!";
-            MessageBoxButtons buttons = MessageBoxButtons.YesNo;
+            MessageBoxButtons buttons = MessageBoxButtons.OK;
             DialogResult result;
 
             // Displays the MessageBox.
 
             result = MessageBox.Show(message, caption, buttons);
 
-            if (result == System.Windows.Forms.DialogResult.Yes)
+            if (result == System.Windows.Forms.DialogResult.OK)
             {
+                focus = new Focus();
+                focus.Show();
+                Thread.Sleep(3000);
                 _selectedArrow = "kiri";
                 btKiri.Enabled = false;
             }
@@ -714,15 +593,18 @@ namespace EmotivController
         {
             string message = "Pengambilan Data sinyal otak ke kanan";
             string caption = "Setelah Klik OK, akan melakukan pengambilan data!";
-            MessageBoxButtons buttons = MessageBoxButtons.YesNo;
+            MessageBoxButtons buttons = MessageBoxButtons.OK;
             DialogResult result;
 
             // Displays the MessageBox.
 
             result = MessageBox.Show(message, caption, buttons);
 
-            if (result == System.Windows.Forms.DialogResult.Yes)
+            if (result == System.Windows.Forms.DialogResult.OK)
             {
+                focus = new Focus();
+                focus.Show();
+                Thread.Sleep(3000);
                 _selectedArrow = "kanan";
                 btKanan.Enabled = false;
             }
@@ -732,15 +614,13 @@ namespace EmotivController
         {
             string message = "Pengambilan Data sinyal otak ke maju";
             string caption = "Setelah Klik OK, akan melakukan pengambilan data!";
-            MessageBoxButtons buttons = MessageBoxButtons.YesNo;
-            DialogResult result;
-
-            // Displays the MessageBox.
-
-            result = MessageBox.Show(message, caption, buttons);
-
-            if (result == System.Windows.Forms.DialogResult.Yes)
+            MessageBoxButtons buttons = MessageBoxButtons.OK;
+            DialogResult result = MessageBox.Show(message, caption, buttons);
+            if (result == System.Windows.Forms.DialogResult.OK)
             {
+                focus = new Focus();
+                focus.Show();
+                Thread.Sleep(3000);
                 _selectedArrow = "maju";
                 btMaju.Enabled = false;
             }
@@ -750,15 +630,14 @@ namespace EmotivController
         {
             string message = "Pengambilan Data sinyal otak ke mundur";
             string caption = "Setelah Klik OK, akan melakukan pengambilan data!";
-            MessageBoxButtons buttons = MessageBoxButtons.YesNo;
-            DialogResult result;
+            MessageBoxButtons buttons = MessageBoxButtons.OK;
+            DialogResult result = MessageBox.Show(message, caption, buttons);
 
-            // Displays the MessageBox.
-
-            result = MessageBox.Show(message, caption, buttons);
-
-            if (result == System.Windows.Forms.DialogResult.Yes)
+            if (result == System.Windows.Forms.DialogResult.OK)
             {
+                focus = new Focus();
+                focus.Show();
+                Thread.Sleep(3000);
                 _selectedArrow = "mundur";
                 btMundur.Enabled = false;
             }
@@ -768,15 +647,14 @@ namespace EmotivController
         {
             string message = "Pengambilan Data sinyal otak ke berhenti";
             string caption = "Setelah Klik OK, akan melakukan pengambilan data!";
-            MessageBoxButtons buttons = MessageBoxButtons.YesNo;
-            DialogResult result;
+            MessageBoxButtons buttons = MessageBoxButtons.OK;
+            DialogResult result = MessageBox.Show(message, caption, buttons);
 
-            // Displays the MessageBox.
-
-            result = MessageBox.Show(message, caption, buttons);
-
-            if (result == System.Windows.Forms.DialogResult.Yes)
+            if (result == System.Windows.Forms.DialogResult.OK)
             {
+                focus = new Focus();
+                focus.Show();
+                Thread.Sleep(3000);
                 _selectedArrow = "berhenti";
                 btBerhenti.Enabled = false;
             }
@@ -791,17 +669,17 @@ namespace EmotivController
             }
         }
 
-        private void saveOneFile(double[][] feature, string selectarrow)
+        private void saveOneFile(double[][] feature, string selectarrow, string window)
         {
-            string filename = "csv/feature.csv";
-            string kelas = "csv/kelas.csv";
-            for(int i = 0; i < feature.Length; i++)
+            string filename = "csv/feature_" + window + ".csv";
+            string kelas = "csv/kelas_" + window + ".csv";
+            for (int i = 0; i < feature.Length; i++)
             {
-                for(int j = 0; j < feature[i].Length; j++)
+                for (int j = 0; j < feature[i].Length; j++)
                 {
-                    if (i == feature.Length - 1 &&  j == feature[feature.Length - 1].Length - 1)
+                    if (i == feature.Length - 1 && j == feature[feature.Length - 1].Length - 1)
                     {
-                        File.AppendAllText(filename, feature[i][j]  + "" + Environment.NewLine);
+                        File.AppendAllText(filename, feature[i][j] + "" + Environment.NewLine);
                     }
                     else
                     {
@@ -829,12 +707,11 @@ namespace EmotivController
                     File.AppendAllText(kelas, 4 + "" + Environment.NewLine);
                     break;
             }
-            MessageBox.Show("Save Done");
         }
 
         private Tuple<double[][], int[]> loadOneFile()
         {
-            string dokumenTraining = "csv/feature.csv";
+            string dokumenTraining = "csv/feature_hanning.csv";
             var csv = File.ReadLines(dokumenTraining);
             int jumlahDataTraining = csv.Count();
             double[][] inputs = new double[jumlahDataTraining][];
@@ -846,7 +723,7 @@ namespace EmotivController
                 inputs[index] = rows.Split(';').Select(double.Parse).ToArray();
                 index++;
             }
-            string kelas = "csv/kelas.csv";
+            string kelas = "csv/kelas_hanning.csv";
             index = 0;
             csv = File.ReadLines(kelas);
             foreach (var rows in csv)
@@ -859,7 +736,7 @@ namespace EmotivController
 
         private void btTesting_Click(object sender, EventArgs e)
         {
-            initArduino();
+            //initArduino();
             _isTraining = false;
             _selectedArrow = "testing";
             btTesting.Enabled = false;
@@ -868,19 +745,17 @@ namespace EmotivController
 
         private void btTraining_Click(object sender, EventArgs e)
         {
-            lda();
-            //knn();
+            svm();
         }
-        KNearestNeighbors knns;
         private void knn()
         {
             var pair = loadOneFile();
             var feature = pair.Item1;
             var kelas = pair.Item2;
-            knns = new KNearestNeighbors(k: 4);
-            knns.NumberOfInputs = 36;
-            knns.Learn(feature, kelas);
-            int[] predicted = knns.Decide(feature);
+            var knn = new KNearestNeighbors(k: 4);
+            knn.NumberOfInputs = 35;
+            knn.Learn(feature, kelas);
+            int[] predicted = knn.Decide(feature);
             accurate(kelas, predicted);
         }
         private void svm()
@@ -902,7 +777,6 @@ namespace EmotivController
 
             // Learn a machine
             machine = teacher.Learn(feature, kelas);
-
 
             // Create the multi-class learning algorithm for the machine
             var calibration = new MulticlassSupportVectorLearning<Gaussian>()
@@ -949,19 +823,19 @@ namespace EmotivController
             }
             double accurate = (temp / predicted.Length) * 100;
             tbAkurasi.Text = accurate + "%";
+            Console.WriteLine("error " + error);
+            Console.WriteLine("Loss  " + loss);
             MessageBox.Show("Learning Done, Thankyou!");
             btTesting.Enabled = true;
-            machine.Save("svm.bin");
         }
-        private LinearDiscriminantAnalysis ldas;
         private void lda()
         {
             var pair = loadOneFile();
             var feature = pair.Item1;
             var kelas = pair.Item2;
-            ldas = new LinearDiscriminantAnalysis(feature,kelas);
-            ldas.Compute();
-            var predicted = ldas.Classify(feature);
+            var lda = new LinearDiscriminantAnalysis(feature, kelas);
+            lda.Compute();
+            var predicted = lda.Classify(feature);
             accurate(kelas, predicted);
         }
         private void kda()
@@ -975,7 +849,20 @@ namespace EmotivController
             int[] predicted = kda.Classify(feature);
             accurate(kelas, predicted);
         }
-
+        private void bpnn()
+        {
+            var pair = loadOneFile();
+            var feature = pair.Item1;
+            var kelas = pair.Item2;
+            int numInput = 36; // number features
+            int numHidden = 5;
+            int numOutput = 5; // number of classes for Y
+            var bpnn = new Backpropagation(numInput, numHidden, numOutput);
+            int maxEpochs = 1000;
+            double learnRate = 0.05;
+            double momentum = 0.01;
+            double[] weights = bpnn.Train(feature, maxEpochs, learnRate, momentum);
+        }
         private void accurate(int[] kelas, int[] predicted)
         {
             double temp = 0;
