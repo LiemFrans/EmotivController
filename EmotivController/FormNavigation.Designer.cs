@@ -33,6 +33,7 @@
             this.btConnect = new System.Windows.Forms.Button();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
             this.flowLayoutPanel9 = new System.Windows.Forms.FlowLayoutPanel();
+            this.tbTime = new System.Windows.Forms.TextBox();
             this.flowLayoutPanel8 = new System.Windows.Forms.FlowLayoutPanel();
             this.flowLayoutPanel7 = new System.Windows.Forms.FlowLayoutPanel();
             this.btKanan = new System.Windows.Forms.Button();
@@ -42,21 +43,23 @@
             this.btKiri = new System.Windows.Forms.Button();
             this.flowLayoutPanel4 = new System.Windows.Forms.FlowLayoutPanel();
             this.tbArah = new System.Windows.Forms.TextBox();
+            this.knnTb = new System.Windows.Forms.TextBox();
             this.btTesting = new System.Windows.Forms.Button();
             this.btCancelTest = new System.Windows.Forms.Button();
             this.tbElapsed = new System.Windows.Forms.TextBox();
+            this.tbJalan = new System.Windows.Forms.TextBox();
+            this.button1 = new System.Windows.Forms.Button();
             this.flowLayoutPanel3 = new System.Windows.Forms.FlowLayoutPanel();
             this.btMaju = new System.Windows.Forms.Button();
             this.flowLayoutPanel2 = new System.Windows.Forms.FlowLayoutPanel();
             this.btTraining = new System.Windows.Forms.Button();
             this.btLangsungTraining = new System.Windows.Forms.Button();
             this.btfromZero = new System.Windows.Forms.Button();
-            this.label1 = new System.Windows.Forms.Label();
-            this.tbAkurasi = new System.Windows.Forms.TextBox();
             this.btAmbilDataLagi = new System.Windows.Forms.Button();
             this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
             this.btMundur = new System.Windows.Forms.Button();
             this.tableLayoutPanel1.SuspendLayout();
+            this.flowLayoutPanel9.SuspendLayout();
             this.flowLayoutPanel7.SuspendLayout();
             this.flowLayoutPanel6.SuspendLayout();
             this.flowLayoutPanel5.SuspendLayout();
@@ -110,10 +113,18 @@
             // 
             // flowLayoutPanel9
             // 
+            this.flowLayoutPanel9.Controls.Add(this.tbTime);
             this.flowLayoutPanel9.Location = new System.Drawing.Point(519, 287);
             this.flowLayoutPanel9.Name = "flowLayoutPanel9";
             this.flowLayoutPanel9.Size = new System.Drawing.Size(252, 136);
             this.flowLayoutPanel9.TabIndex = 8;
+            // 
+            // tbTime
+            // 
+            this.tbTime.Location = new System.Drawing.Point(3, 3);
+            this.tbTime.Name = "tbTime";
+            this.tbTime.Size = new System.Drawing.Size(100, 20);
+            this.tbTime.TabIndex = 0;
             // 
             // flowLayoutPanel8
             // 
@@ -182,9 +193,12 @@
             // flowLayoutPanel4
             // 
             this.flowLayoutPanel4.Controls.Add(this.tbArah);
+            this.flowLayoutPanel4.Controls.Add(this.knnTb);
             this.flowLayoutPanel4.Controls.Add(this.btTesting);
             this.flowLayoutPanel4.Controls.Add(this.btCancelTest);
             this.flowLayoutPanel4.Controls.Add(this.tbElapsed);
+            this.flowLayoutPanel4.Controls.Add(this.tbJalan);
+            this.flowLayoutPanel4.Controls.Add(this.button1);
             this.flowLayoutPanel4.Location = new System.Drawing.Point(519, 3);
             this.flowLayoutPanel4.Name = "flowLayoutPanel4";
             this.flowLayoutPanel4.Size = new System.Drawing.Size(252, 135);
@@ -195,8 +209,17 @@
             this.tbArah.Location = new System.Drawing.Point(3, 3);
             this.tbArah.Name = "tbArah";
             this.tbArah.ReadOnly = true;
-            this.tbArah.Size = new System.Drawing.Size(170, 20);
+            this.tbArah.Size = new System.Drawing.Size(85, 20);
             this.tbArah.TabIndex = 0;
+            // 
+            // knnTb
+            // 
+            this.knnTb.Enabled = false;
+            this.knnTb.Location = new System.Drawing.Point(94, 3);
+            this.knnTb.Name = "knnTb";
+            this.knnTb.ReadOnly = true;
+            this.knnTb.Size = new System.Drawing.Size(100, 20);
+            this.knnTb.TabIndex = 1;
             // 
             // btTesting
             // 
@@ -228,6 +251,23 @@
             this.tbElapsed.Size = new System.Drawing.Size(170, 20);
             this.tbElapsed.TabIndex = 4;
             // 
+            // tbJalan
+            // 
+            this.tbJalan.Location = new System.Drawing.Point(3, 84);
+            this.tbJalan.Name = "tbJalan";
+            this.tbJalan.Size = new System.Drawing.Size(170, 20);
+            this.tbJalan.TabIndex = 5;
+            // 
+            // button1
+            // 
+            this.button1.Location = new System.Drawing.Point(3, 110);
+            this.button1.Name = "button1";
+            this.button1.Size = new System.Drawing.Size(75, 23);
+            this.button1.TabIndex = 6;
+            this.button1.Text = "Stop";
+            this.button1.UseVisualStyleBackColor = true;
+            this.button1.Click += new System.EventHandler(this.button1_Click);
+            // 
             // flowLayoutPanel3
             // 
             this.flowLayoutPanel3.Controls.Add(this.btMaju);
@@ -253,8 +293,6 @@
             this.flowLayoutPanel2.Controls.Add(this.btTraining);
             this.flowLayoutPanel2.Controls.Add(this.btLangsungTraining);
             this.flowLayoutPanel2.Controls.Add(this.btfromZero);
-            this.flowLayoutPanel2.Controls.Add(this.label1);
-            this.flowLayoutPanel2.Controls.Add(this.tbAkurasi);
             this.flowLayoutPanel2.Controls.Add(this.btAmbilDataLagi);
             this.flowLayoutPanel2.Location = new System.Drawing.Point(3, 3);
             this.flowLayoutPanel2.Name = "flowLayoutPanel2";
@@ -294,27 +332,10 @@
             this.btfromZero.UseVisualStyleBackColor = true;
             this.btfromZero.Click += new System.EventHandler(this.btfromZero_Click);
             // 
-            // label1
-            // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(3, 87);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(42, 13);
-            this.label1.TabIndex = 5;
-            this.label1.Text = "Akurasi";
-            // 
-            // tbAkurasi
-            // 
-            this.tbAkurasi.Location = new System.Drawing.Point(51, 90);
-            this.tbAkurasi.Name = "tbAkurasi";
-            this.tbAkurasi.ReadOnly = true;
-            this.tbAkurasi.Size = new System.Drawing.Size(196, 20);
-            this.tbAkurasi.TabIndex = 4;
-            // 
             // btAmbilDataLagi
             // 
             this.btAmbilDataLagi.Enabled = false;
-            this.btAmbilDataLagi.Location = new System.Drawing.Point(3, 116);
+            this.btAmbilDataLagi.Location = new System.Drawing.Point(3, 90);
             this.btAmbilDataLagi.Name = "btAmbilDataLagi";
             this.btAmbilDataLagi.Size = new System.Drawing.Size(249, 23);
             this.btAmbilDataLagi.TabIndex = 4;
@@ -354,6 +375,8 @@
             this.Text = "Form Navigation";
             this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.FormNavigation_FormClosed);
             this.tableLayoutPanel1.ResumeLayout(false);
+            this.flowLayoutPanel9.ResumeLayout(false);
+            this.flowLayoutPanel9.PerformLayout();
             this.flowLayoutPanel7.ResumeLayout(false);
             this.flowLayoutPanel6.ResumeLayout(false);
             this.flowLayoutPanel5.ResumeLayout(false);
@@ -361,7 +384,6 @@
             this.flowLayoutPanel4.PerformLayout();
             this.flowLayoutPanel3.ResumeLayout(false);
             this.flowLayoutPanel2.ResumeLayout(false);
-            this.flowLayoutPanel2.PerformLayout();
             this.flowLayoutPanel1.ResumeLayout(false);
             this.ResumeLayout(false);
 
@@ -391,12 +413,14 @@
         private System.Windows.Forms.Button btTraining;
         private System.Windows.Forms.Button btLangsungTraining;
         private System.Windows.Forms.Button btfromZero;
-        private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.TextBox tbAkurasi;
         private System.Windows.Forms.Button btAmbilDataLagi;
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel1;
         private System.Windows.Forms.Button btMundur;
         private System.Windows.Forms.TextBox tbElapsed;
+        private System.Windows.Forms.TextBox tbJalan;
+        private System.Windows.Forms.Button button1;
+        private System.Windows.Forms.TextBox tbTime;
+        private System.Windows.Forms.TextBox knnTb;
     }
 }
 

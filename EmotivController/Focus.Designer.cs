@@ -28,7 +28,17 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.lbName = new System.Windows.Forms.Label();
             this.SuspendLayout();
+            // 
+            // lbName
+            // 
+            this.lbName.AutoSize = true;
+            this.lbName.Font = new System.Drawing.Font("Microsoft Sans Serif", 18F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lbName.Location = new System.Drawing.Point(345, 391);
+            this.lbName.Name = "lbName";
+            this.lbName.Size = new System.Drawing.Size(0, 29);
+            this.lbName.TabIndex = 0;
             // 
             // Focus
             // 
@@ -37,12 +47,16 @@
             this.BackgroundImage = global::EmotivController.Properties.Resources.XEnNxoM;
             this.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
             this.ClientSize = new System.Drawing.Size(800, 450);
+            this.Controls.Add(this.lbName);
             this.Name = "Focus";
             this.Text = "Focus";
             this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 
         #endregion
+
+        private System.Windows.Forms.Label lbName;
     }
 }

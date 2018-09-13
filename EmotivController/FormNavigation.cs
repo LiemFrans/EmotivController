@@ -25,35 +25,49 @@ using System.IO.Ports;
 using Accord.MachineLearning;
 using Accord.Statistics.Analysis;
 using EmotivController.NeuralNetwork;
+using Accord.Neuro;
+using Accord.Neuro.Learning;
+using Accord.Math;
+using Accord.Controls;
+using Accord.Neuro.Networks;
+using MathNet.Filtering.IIR;
+using Accord.MachineLearning.DecisionTrees;
+using Accord.DataSets;
+using Accord.MachineLearning.Bayes;
+using Accord.Statistics.Distributions.Univariate;
+using Accord.Statistics.Distributions.Fitting;
+using Accord.Math.Distances;
+
 namespace EmotivController
 {
     public partial class FormNavigation : Form
     {
         private Process cmdProcess;
         private bool isOK = false;
-        private bool isRunning = false;
+        //private bool isRunning = false;
         //private bool isConnect = false;
         private WebSocket ws;
         private string old_data = "";
         private string ipAddress = "127.0.0.1";
         private string _selectedArrow = "";
         private bool _isTraining;
-        //private List<double> _dataAF3 = new List<double>();
-        //private List<double> _dataAF4 = new List<double>();
-        private List<double> _dataF7 = new List<double>();
-        private List<double> _dataF8 = new List<double>();
         private List<double> _dataF3 = new List<double>();
         private List<double> _dataF4 = new List<double>();
+        private List<double> _dataF7 = new List<double>();
+        private List<double> _dataF8 = new List<double>();
         private List<double> _dataFC5 = new List<double>();
         private List<double> _dataFC6 = new List<double>();
         private static int _frekuensiSampling = 128;
-        private static int _second = 16;
+        private static int _second = 4;
         private static int _jumlahData = _frekuensiSampling * _second;
-        private static int _secondTesting = 2;
+        private static int _secondTesting = 4;
         private static int _timeTesting = _frekuensiSampling * _secondTesting;
+        private int _cuttOffLowBPF = 8;
+        private int _cutOffHighBPF = 30;
         private Stopwatch watch;
         private Stopwatch _watchTesting;
         private MulticlassSupportVectorMachine<Gaussian> machine;
+        private KNearestNeighbors knn;
         private SerialPort _myport;
         private Focus focus;
         public FormNavigation()
@@ -82,10 +96,12 @@ namespace EmotivController
             ws.OnMessage += OnMessageResult;
             ws.Send("START");
         }
-
+        int times = 0;
+        int akusisike = 0;
         public void OnMessageResult(object sender, MessageEventArgs e)
         {
-            if (!old_data.Equals(e.Data))
+            
+            if (_isDecide == false && !old_data.Equals(e.Data))
             {
                 old_data = e.Data;
                 DataModel data = new DataModel();
@@ -104,33 +120,15 @@ namespace EmotivController
                 {
                     if (_isTraining && _selectedArrow != "testing")
                     {
-                        // Place delegate on the Dispatcher.
-                        if (_dataF3.Count() == _jumlahData)
+                        if (_dataF3.Count()== _jumlahData)
                         {
                             string selectArrow = _selectedArrow;
                             MethodInvoker action = delegate
                             {
                                 focus.Hide();
                             };
-                            var dataF31 = _dataF3.Take(_dataF3.Count / 2).ToList();
-                            var dataF32 = _dataF3.Skip(_dataF3.Count / 2).ToList();
-
-                            var dataF41 = _dataF4.Take(_dataF4.Count / 2).ToList();
-                            var dataF42 = _dataF4.Skip(_dataF4.Count / 2).ToList();
-
-                            var dataF71 = _dataF7.Take(_dataF7.Count / 2).ToList();
-                            var dataF72 = _dataF7.Skip(_dataF7.Count / 2).ToList();
-
-                            var dataF81 = _dataF8.Take(_dataF8.Count / 2).ToList();
-                            var dataF82 = _dataF8.Skip(_dataF8.Count / 2).ToList();
-
-                            var dataFC51 = _dataFC5.Take(_dataFC5.Count / 2).ToList();
-                            var dataFC52 = _dataFC5.Skip(_dataFC5.Count / 2).ToList();
-
-                            var dataFC61 = _dataFC6.Take(_dataFC6.Count / 2).ToList();
-                            var dataFC62 = _dataFC6.Skip(_dataFC6.Count / 2).ToList();
-                            Console.WriteLine("masuk");
                             focus.BeginInvoke(action);
+                            Console.WriteLine("masuk");
                             string message = "Pengambilan Data sinyal otak selesai (" + selectArrow + ")";
                             string caption = "Setelah Klik OK, akan melakukan penyimpanan data!";
                             MessageBoxButtons buttons = MessageBoxButtons.OK;
@@ -138,49 +136,123 @@ namespace EmotivController
                             result = MessageBox.Show(message, caption, buttons);
                             if (result == System.Windows.Forms.DialogResult.OK)
                             {
-                                //preprocessingSignalTraining(_dataF3, _dataF4, _dataF7, _dataF8, _dataFC5, _dataFC6, selectArrow);
-                                preprocessingSignalTraining(dataF31, dataF41, dataF71, dataF81, dataFC51, dataFC61, selectArrow);
-                                preprocessingSignalTraining(dataF32, dataF42, dataF72, dataF82, dataFC52, dataFC62, selectArrow);
+                                preprocessingSignalTraining(_dataF3, _dataF4, _dataF7, _dataF8, _dataFC5, _dataFC6, selectArrow);
                                 MessageBox.Show("Save Done");
                                 clearList();
                             }
+                            times = 0;
+                            akusisike++;
                         }
-                        else
+                        else if(_dataF3.Count()<_jumlahData)
                         {
+                            Console.WriteLine("masuk akusisi "+akusisike+", " + times);
                             _dataF3.Add(data.F3.value - mean);
                             _dataF4.Add(data.F4.value - mean);
                             _dataF7.Add(data.F7.value - mean);
                             _dataF8.Add(data.F8.value - mean);
                             _dataFC5.Add(data.FC5.value - mean);
                             _dataFC6.Add(data.FC6.value - mean);
+                            times++;
                         }
                     }
                     else if (_isTraining == false && _selectedArrow == "testing")
                     {
-                        if (_dataF3.Count() == _timeTesting)
+                        if (_dataF3.Count()== _jumlahData)
                         {
-                            _watchTesting = new Stopwatch();
-                            _watchTesting.Start();
-                            var feature = preprocessingSignalTesting(_dataF3, _dataF4, _dataF7, _dataF8, _dataFC5, _dataFC6);
-                            int dec = machine.Decide(feature)[0];
-                            clearList();
-                            sendCommand(dec);
-                            _watchTesting.Stop();
-                            MethodInvoker action = delegate
+                            _isDecide = true;
                             {
-                                tbElapsed.Text = "Respond Time" + _watchTesting.ElapsedMilliseconds + " ms";
-                            };
-                            tbElapsed.BeginInvoke(action);
-                            Thread.Sleep(TimeSpan.FromSeconds(3));//rest 3 seconds
+                                /*
+                                //MethodInvoker action;
+                                //_watchTesting = new Stopwatch();
+                                //_watchTesting.Start();
+                                //var feature = preprocessingSignalTesting(_dataF3, _dataF4, _dataF7, _dataF8, _dataFC5, _dataFC6);
+                                //int dec = machine.Decide(feature[0]);
+
+                                //int decknn = knn.Decide(feature[0]);
+                                //sendCommand(dec, decknn);
+                                //Console.WriteLine(dec + ", " + decknn);
+                                //_watchTesting.Stop();
+
+                                //action = delegate
+                                //{
+                                //    tbElapsed.Text = "Respond Time" + _watchTesting.ElapsedMilliseconds + " ms";
+                                //};
+                                //tbElapsed.BeginInvoke(action);
+                                //action = delegate
+                                //{ tbJalan.Text = "JALAN"; };
+                                //tbJalan.BeginInvoke(action);
+                                //if (sleep(2))
+                                //{
+                                //    action = delegate
+                                //    { tbJalan.Text = "ISTIRAHAT"; };
+                                //    tbJalan.BeginInvoke(action);
+                                //    sendCommand(4, 4);
+                                //    if (sleep(4))
+                                //    {
+                                //        action = delegate
+                                //        { tbJalan.Text = "BERPIKIR"; };
+                                //        tbJalan.BeginInvoke(action);
+                                //        times = 0;
+                                //        clearList();
+                                //        sleep(4);
+                                //        akusisike++;
+                                //    }
+                                //}*/
+                            }
                         }
-                        else
+                        else if (_dataF3.Count() < _timeTesting)
                         {
+                            MethodInvoker action = delegate
+                            { tbTime.Text = ""+times; };
+                            tbJalan.BeginInvoke(action);
                             _dataF3.Add(data.F3.value - mean);
                             _dataF4.Add(data.F4.value - mean);
                             _dataF7.Add(data.F7.value - mean);
                             _dataF8.Add(data.F8.value - mean);
                             _dataFC5.Add(data.FC5.value - mean);
                             _dataFC6.Add(data.FC6.value - mean);
+                            times++;
+                        }
+                    }
+                }
+            }
+            else if (_isDecide && !old_data.Equals(e.Data))
+            {
+                MethodInvoker action;
+                _watchTesting = new Stopwatch();
+                _watchTesting.Start();
+                var feature = preprocessingSignalTesting(_dataF3, _dataF4, _dataF7, _dataF8, _dataFC5, _dataFC6);
+                int dec = machine.Decide(feature[0]);
+
+                int decknn = knn.Decide(feature[0]);
+                sendCommand(dec, decknn);
+                Console.WriteLine(dec + ", " + decknn);
+                _watchTesting.Stop();
+
+                action = delegate
+                {
+                    tbElapsed.Text = "Respond Time" + _watchTesting.ElapsedMilliseconds + " ms";
+                };
+                tbElapsed.BeginInvoke(action);
+                action = delegate
+                { tbJalan.Text = "JALAN"; };
+                tbJalan.BeginInvoke(action);
+                if (sleep(2))
+                {
+                    action = delegate
+                    { tbJalan.Text = "ISTIRAHAT"; };
+                    tbJalan.BeginInvoke(action);
+                    sendCommand(4, 4);
+                    if (sleep(4))
+                    {
+                        action = delegate
+                        { tbJalan.Text = "BERPIKIR"; };
+                        tbJalan.BeginInvoke(action);
+                        if (clearList())
+                        {
+                            times = 0;
+                            akusisike++;
+                            _isDecide = false;
                         }
                     }
                 }
@@ -215,7 +287,7 @@ namespace EmotivController
             }
         }
 
-        private void clearList()
+        private bool clearList()
         {
             _dataF3.Clear();
             _dataF4.Clear();
@@ -223,6 +295,7 @@ namespace EmotivController
             _dataF8.Clear();
             _dataFC5.Clear();
             _dataFC6.Clear();
+            return true;
         }
 
         private void btfromZero_Click(object sender, EventArgs e)
@@ -241,80 +314,11 @@ namespace EmotivController
             cmdProcess = Process.Start(psi);
         }
 
-        private double[] DFT(double[] signal)
+        private double[] filterBPF(double[] signal, int cutOffLow, int cutOffHigh)
         {
-            int jumlahData = signal.Length;
-            double[] re = new double[jumlahData];
-            double[] im = new double[jumlahData];
-            double[] hasilKuadrat = new double[jumlahData];
-            double[] dft = new double[jumlahData];
-            Parallel.For(0, jumlahData, i =>
-            {
-                re[i] = 0;
-                im[i] = 0;
-                for (int j = 0; j < jumlahData; j++)
-                {
-                    re[i] = re[i] + signal[j] * Math.Cos(2 * Math.PI * j * i) / jumlahData;
-                    im[i] = im[i] - signal[j] * Math.Sin(2 * Math.PI * j * i) / jumlahData;
-                }
-                hasilKuadrat[i] = Math.Sqrt(re[i]) + Math.Sqrt(im[i]);
-                dft[i] = Math.Sqrt(hasilKuadrat[i]) / (jumlahData / 2);
-            });
-            return dft;
-        }
-
-        private double _frequencyCutOffBPF = 30;
-        private double _frequencyCutOffBSF = 10;
-
-        private double[] filterBPFOrde2(double[] signal)
-        {
-            double r = 0.8;
-            int jumlahData = signal.Length;
-            double theta = 2 * Math.PI * _frequencyCutOffBPF / _frekuensiSampling;
-            double gain = ((1 - r) * Math.Sqrt(1 - 2 * r * Math.Cos(2 * theta) + r * r)) / 2 * Math.Abs(Math.Sin(theta));
-            double[] bpf = new double[jumlahData];
-            Parallel.For(0, jumlahData, i =>
-            {
-                switch (i)
-                {
-                    case 0:
-                        bpf[i] = 2 * r * Math.Cos(theta) * 0 - (Math.Pow(r, 2) * 0) + gain * (signal[i] - 0);
-                        break;
-                    case 1:
-                        bpf[i] = 2 * r * Math.Cos(theta) * bpf[i - 1] - (Math.Pow(r, 2) * 0) + gain * (signal[i] - 0);
-                        break;
-                    default:
-                        bpf[i] = 2 * r * Math.Cos(theta) * bpf[i - 1] - (Math.Pow(r, 2) * bpf[i - 2]) + gain * (signal[i] - signal[i - 2]);
-                        break;
-                }
-            });
+            var bpfFilter = OnlineIirFilter.CreateBandpass(MathNet.Filtering.ImpulseResponse.Finite, _frekuensiSampling, cutOffLow, cutOffHigh);
+            var bpf = bpfFilter.ProcessSamples(signal);
             return bpf;
-        }
-
-        private double[] filterBSF(double[] signal)//notch
-        {
-            double r = 0.4;
-            int jumlahData = signal.Length;
-            double theta = 2 * Math.PI * _frequencyCutOffBSF * _frekuensiSampling;
-            double gain = (1 - 2 * r * Math.Cos(theta) + r * r) / (2 - 2 * Math.Cos(theta));
-            double[] bsf = new double[jumlahData];
-            //for (int i = 0; i < _jumlahData; i++)
-            Parallel.For(0, jumlahData, i =>
-            {
-                switch (i)
-                {
-                    case 0:
-                        bsf[i] = 2 * r * Math.Cos(theta) * 0 - (r * r * 0) + (signal[i] - (2 * Math.Cos(theta) * signal[0]) + signal[0]);
-                        break;
-                    case 1:
-                        bsf[i] = 2 * r * Math.Cos(theta) * bsf[i - 1] - (r * r * bsf[0]) + (signal[i] - (2 * Math.Cos(theta) * signal[i - 1]) + signal[0]);
-                        break;
-                    default:
-                        bsf[i] = 2 * r * Math.Cos(theta) * bsf[i - 1] - (r * r * bsf[i - 2]) + (signal[i] - (2 * Math.Cos(theta) * signal[i - 1]) + signal[i - 2]);
-                        break;
-                }
-            });
-            return bsf;
         }
 
         private double[] Hanning(double[] signal)
@@ -351,7 +355,7 @@ namespace EmotivController
 
         private double[] FFT(double[] signal)
         {
-            int nPoint = (int)signal.Length;
+            int nPoint = signal.Length;
             Complex[] fftComplex = new Complex[nPoint];
             double[] fft = new double[nPoint];
             Parallel.For(0, nPoint, i =>
@@ -363,7 +367,7 @@ namespace EmotivController
             {
                 fft[i] = fftComplex[i].Magnitude; // back to double
             });
-            return fft;
+            return fft.Take(fft.Length / 2).ToArray();
         }
 
         private double[] extractionFeature(double[] signal)
@@ -375,6 +379,9 @@ namespace EmotivController
             feature[3] = max(signal);
             feature[4] = standardDeviation(signal);
             feature[5] = median(signal);
+            //double[] feature = new double[2];
+            //feature[0] = max(signal);
+            //feature[1] = Array.IndexOf(signal, feature[0]) + 64;
             return feature;
         }
 
@@ -422,47 +429,30 @@ namespace EmotivController
                 return sortedNumbers.ElementAt(halfIndex);
             }
         }
-
         private void preprocessingSignalTraining(
             List<double> dataF3, List<double> dataF4, List<double> dataF7, List<double> dataF8,
             List<double> dataFC5, List<double> dataFC6, string selectArrow)
         {
-            double[][] BPFOrde2 = new double[6][];
-            double[][] BSF = new double[6][];
+            double[][] RAW = new double[6][] { dataF3.ToArray(), dataF4.ToArray(), dataF7.ToArray(), dataF8.ToArray(), dataFC5.ToArray(), dataFC6.ToArray() };
+            double[][] BPF= new double[6][];
             double[][] windowHanning = new double[6][];
             double[][] windowHamming = new double[6][];
             double[][] vFFTHanning = new double[6][];
             double[][] vFFTHamming = new double[6][];
             double[][] featureHanning = new double[6][];
             double[][] featureHamming = new double[6][];
-            BPFOrde2[0] = filterBPFOrde2(dataF3.ToArray());
-            savePerNewFile(dataF3.ToArray(), "RAW", "F3", selectArrow);
-            savePerNewFile(BPFOrde2[0], "BPF", "AF4", selectArrow);
-            BPFOrde2[1] = filterBPFOrde2(dataF4.ToArray());
-            savePerNewFile(dataF4.ToArray(), "RAW", "F4", selectArrow);
-            savePerNewFile(BPFOrde2[1], "BPF", "AF4", selectArrow);
-            BPFOrde2[2] = filterBPFOrde2(dataF7.ToArray());
-            savePerNewFile(dataF7.ToArray(), "RAW", "F7", selectArrow);
-            savePerNewFile(BPFOrde2[2], "BPF", "F7", selectArrow);
-            BPFOrde2[3] = filterBPFOrde2(dataF8.ToArray());
-            savePerNewFile(dataF8.ToArray(), "RAW", "F8", selectArrow);
-            savePerNewFile(BPFOrde2[3], "BPF", "F8", selectArrow);
-            BPFOrde2[4] = filterBPFOrde2(dataFC5.ToArray());
-            savePerNewFile(dataFC5.ToArray(), "RAW", "FC5", selectArrow);
-            savePerNewFile(BPFOrde2[4], "BPF", "FC5", selectArrow);
-            BPFOrde2[5] = filterBPFOrde2(dataFC6.ToArray());
-            savePerNewFile(dataFC6.ToArray(), "RAW", "FC6", selectArrow);
-            savePerNewFile(BPFOrde2[5], "BPF", "FC6", selectArrow);
             string[] signal = new string[6] { "F3", "F4", "F7", "F8", "FC5", "FC6" };
             Parallel.For(0, 6, i =>
             {
-                BSF[i] = filterBSF(BPFOrde2[i]);
-                savePerNewFile(BSF[i], "BSF", signal[i], selectArrow);
+                BPF[i] = filterBPF(RAW[i], _cuttOffLowBPF, _cutOffHighBPF);
+                savePerNewFile(dataF3.ToArray(), "RAW", signal[i], selectArrow);
+                savePerNewFile(BPF[0], "BPF", signal[i], selectArrow);
             });
+
             Parallel.For(0, 6, i =>
             {
-                windowHanning[i] = Hanning(BSF[i]);
-                windowHamming[i] = Hamming(BSF[i]);
+                windowHanning[i] = Hanning(BPF[i]);
+                windowHamming[i] = Hamming(BPF[i]);
                 savePerNewFile(windowHanning[i], "Hanning", signal[i], selectArrow);
                 savePerNewFile(windowHamming[i], "Hamming", signal[i], selectArrow);
             });
@@ -475,8 +465,8 @@ namespace EmotivController
             });
             Parallel.For(0, 6, i =>
             {
-                featureHanning[i] = extractionFeature(vFFTHanning[i]);
-                featureHamming[i] = extractionFeature(vFFTHamming[i]);
+                featureHanning[i] = extractionFeature(vFFTHanning[i].Skip(64).Take(176).ToArray());
+                featureHamming[i] = extractionFeature(vFFTHamming[i].Skip(64).Take(176).ToArray());
             });
             saveOneFile(featureHanning, selectArrow, "hanning");
             saveOneFile(featureHamming, selectArrow, "hamming");
@@ -487,33 +477,30 @@ namespace EmotivController
             List<double> dataF3, List<double> dataF4, List<double> dataF7, List<double> dataF8,
             List<double> dataFC5, List<double> dataFC6)
         {
-            double[][] BPFOrde2 = new double[6][];
-            double[][] BSF = new double[6][];
+            double[][] RAW = new double[6][] { dataF3.ToArray(), dataF4.ToArray(), dataF7.ToArray(), dataF8.ToArray(), dataFC5.ToArray(), dataFC6.ToArray() };
+            double[][] BPF = new double[6][];
             double[][] window = new double[6][];
             double[][] vFFT = new double[6][];
             double[][] feature = new double[6][];
-            BPFOrde2[0] = filterBPFOrde2(dataF3.ToArray());
-            BPFOrde2[1] = filterBPFOrde2(dataF4.ToArray());
-            BPFOrde2[2] = filterBPFOrde2(dataF7.ToArray());
-            BPFOrde2[3] = filterBPFOrde2(dataF8.ToArray());
-            BPFOrde2[4] = filterBPFOrde2(dataFC5.ToArray());
-            BPFOrde2[5] = filterBPFOrde2(dataFC6.ToArray());
             string[] signal = new string[6] { "F3", "F4", "F7", "F8", "FC5", "FC6" };
             Parallel.For(0, 6, i =>
             {
-                BSF[i] = filterBSF(BPFOrde2[i]);
+                BPF[i] = filterBPF(RAW[i], _cuttOffLowBPF, _cutOffHighBPF);
+                //savePerNewFile(dataF3.ToArray(), "RAW_TEST", signal[i], "UNKNOWN");
             });
             Parallel.For(0, 6, i =>
             {
-                window[i] = Hanning(BSF[i]);
+                window[i] = Hanning(BPF[i]);
             });
             Parallel.For(0, 6, i =>
             {
                 vFFT[i] = FFT(window[i]);
             });
+            //var mean = meanWave(vFFT);
+            //var feature = extractionFeature(mean.Skip(64).Take(176).ToArray());
             Parallel.For(0, 6, i =>
             {
-                feature[i] = extractionFeature(vFFT[i]);
+                feature[i] = extractionFeature(vFFT[i].Skip(64).Take(176).ToArray());
             });
             var ft = new double[1][];
             var perchannel = new List<double>();
@@ -582,9 +569,12 @@ namespace EmotivController
             {
                 focus = new Focus();
                 focus.Show();
-                Thread.Sleep(3000);
-                _selectedArrow = "kiri";
-                btKiri.Enabled = false;
+                if (sleep(3))
+                {
+                    _selectedArrow = "kiri";
+                    btKiri.Enabled = false;
+                    Console.WriteLine("masuk");
+                }
             }
 
         }
@@ -604,9 +594,11 @@ namespace EmotivController
             {
                 focus = new Focus();
                 focus.Show();
-                Thread.Sleep(3000);
-                _selectedArrow = "kanan";
-                btKanan.Enabled = false;
+                if (sleep(3))
+                {
+                    _selectedArrow = "kanan";
+                    btKanan.Enabled = false;
+                }
             }
         }
 
@@ -620,9 +612,12 @@ namespace EmotivController
             {
                 focus = new Focus();
                 focus.Show();
-                Thread.Sleep(3000);
-                _selectedArrow = "maju";
-                btMaju.Enabled = false;
+
+                if (sleep(3))
+                {
+                    _selectedArrow = "maju";
+                    btMaju.Enabled = false;
+                }
             }
         }
 
@@ -637,9 +632,11 @@ namespace EmotivController
             {
                 focus = new Focus();
                 focus.Show();
-                Thread.Sleep(3000);
-                _selectedArrow = "mundur";
-                btMundur.Enabled = false;
+                if (sleep(3))
+                {
+                    _selectedArrow = "mundur";
+                    btMundur.Enabled = false;
+                }
             }
         }
 
@@ -654,9 +651,11 @@ namespace EmotivController
             {
                 focus = new Focus();
                 focus.Show();
-                Thread.Sleep(3000);
-                _selectedArrow = "berhenti";
-                btBerhenti.Enabled = false;
+                if (sleep(3))
+                {
+                    _selectedArrow = "berhenti";
+                    btBerhenti.Enabled = false;
+                }
             }
         }
 
@@ -733,135 +732,82 @@ namespace EmotivController
             }
             return Tuple.Create(inputs, outputs);
         }
-
+         
         private void btTesting_Click(object sender, EventArgs e)
         {
-            //initArduino();
+            initArduino();
             _isTraining = false;
             _selectedArrow = "testing";
             btTesting.Enabled = false;
             btCancelTest.Enabled = true;
+            MethodInvoker action = delegate
+            { tbJalan.Text = "BERPIKIR"; };
+            tbJalan.BeginInvoke(action);
         }
 
         private void btTraining_Click(object sender, EventArgs e)
         {
+            knns();
             svm();
         }
-        private void knn()
+        private void knns()
         {
             var pair = loadOneFile();
             var feature = pair.Item1;
             var kelas = pair.Item2;
-            var knn = new KNearestNeighbors(k: 4);
-            knn.NumberOfInputs = 35;
+            var featureTest = pair.Item1;
+            var kelasTest = pair.Item2;
+            knn = new KNearestNeighbors(k: 6);
+            knn.NumberOfInputs = 36;
             knn.Learn(feature, kelas);
-            int[] predicted = knn.Decide(feature);
-            accurate(kelas, predicted);
+            int[] predicted = knn.Decide(featureTest);
+            accurate(kelasTest, predicted);
         }
+
         private void svm()
         {
             var pair = loadOneFile();
-            var feature = pair.Item1;
-            var kelas = pair.Item2;
+            var inputs = pair.Item1;
+            var outputs = pair.Item2;
             var teacher = new MulticlassSupportVectorLearning<Gaussian>()
             {
-                // Configure the learning algorithm to use SMO to train the
-                //  underlying SVMs in each of the binary class subproblems.
                 Learner = (param) => new SequentialMinimalOptimization<Gaussian>()
                 {
-                    // Estimate a suitable guess for the Gaussian kernel's parameters.
-                    // This estimate can serve as a starting point for a grid search.
-                    UseKernelEstimation = true
+                    UseKernelEstimation = false,
+                    //Complexity =1000,
+                    UseComplexityHeuristic = false,
+                    //Tolerance=1e-10
                 }
             };
 
-            // Learn a machine
-            machine = teacher.Learn(feature, kelas);
-
-            // Create the multi-class learning algorithm for the machine
-            var calibration = new MulticlassSupportVectorLearning<Gaussian>()
-            {
-                Model = machine, // We will start with an existing machine
-
-                // Configure the learning algorithm to use Platt's calibration
-                Learner = (param) => new ProbabilisticOutputCalibration<Gaussian>()
-                {
-                    Model = param.Model // Start with an existing machine
-                }
-            };
-
-
-            // Configure parallel execution options
-            calibration.ParallelOptions.MaxDegreeOfParallelism = 1;
-
-            // Learn a machine
-            calibration.Learn(feature, kelas);
-
-            // Obtain class predictions for each sample
-            int[] predicted = machine.Decide(feature);
-
-            // Get class scores for each sample
-            double[] scores = machine.Score(feature);
-
-            // Get log-likelihoods (should be same as scores)
-            double[][] logl = machine.LogLikelihoods(feature);
-
-            // Get probability for each sample
-            double[][] prob = machine.Probabilities(feature);
-
-            // Compute classification error
-            double error = new ZeroOneLoss(kelas).Loss(predicted);
-            double loss = new CategoryCrossEntropyLoss(kelas).Loss(prob);
-
-            double temp = 0;
-            for (int j = 0; j < predicted.Length; j++)
-            {
-                if (kelas[j] == predicted[j])
-                {
-                    temp++;
-                }
-            }
-            double accurate = (temp / predicted.Length) * 100;
-            tbAkurasi.Text = accurate + "%";
-            Console.WriteLine("error " + error);
-            Console.WriteLine("Loss  " + loss);
-            MessageBox.Show("Learning Done, Thankyou!");
+            teacher.ParallelOptions.MaxDegreeOfParallelism = 1;
+            machine = teacher.Learn(inputs, outputs);
+            int[] predicted = machine.Decide(inputs);
+            double[] scores = machine.Score(inputs);
+            double error = new ZeroOneLoss(outputs).Loss(predicted);
+            accurate(outputs, predicted);
             btTesting.Enabled = true;
         }
-        private void lda()
+        private bool sleep(double seconds)
         {
-            var pair = loadOneFile();
-            var feature = pair.Item1;
-            var kelas = pair.Item2;
-            var lda = new LinearDiscriminantAnalysis(feature, kelas);
-            lda.Compute();
-            var predicted = lda.Classify(feature);
-            accurate(kelas, predicted);
-        }
-        private void kda()
-        {
-            var pair = loadOneFile();
-            var feature = pair.Item1;
-            var kelas = pair.Item2;
-            IKernel kernel = new Gaussian(3.6);
-            var kda = new KernelDiscriminantAnalysis(feature, kelas, kernel);
-            kda.Compute();
-            int[] predicted = kda.Classify(feature);
-            accurate(kelas, predicted);
-        }
-        private void bpnn()
-        {
-            var pair = loadOneFile();
-            var feature = pair.Item1;
-            var kelas = pair.Item2;
-            int numInput = 36; // number features
-            int numHidden = 5;
-            int numOutput = 5; // number of classes for Y
-            var bpnn = new Backpropagation(numInput, numHidden, numOutput);
-            int maxEpochs = 1000;
-            double learnRate = 0.05;
-            double momentum = 0.01;
-            double[] weights = bpnn.Train(feature, maxEpochs, learnRate, momentum);
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
+            for(int i = 0; ; i++)
+            {
+               if (i % 100000 == 0)
+                {
+                    sw.Stop();
+                    if (sw.ElapsedMilliseconds > seconds * 1000)
+                    {
+                        Console.WriteLine("Done " + sw.Elapsed.Seconds + " s");
+                        return true;
+                    }
+                    else
+                    {
+                        sw.Start();
+                    }
+                }
+            }
         }
         private void accurate(int[] kelas, int[] predicted)
         {
@@ -884,14 +830,15 @@ namespace EmotivController
             }
             Console.WriteLine();
             double accurate = (temp / predicted.Length) * 100;
-            tbAkurasi.Text = accurate + "%";
+            //tbAkurasi.Text = accurate + "%";
             MessageBox.Show("Learning Done, Thankyou!");
             btTesting.Enabled = true;
         }
-
+        bool _isDecide = false;
         private void btAmbilDataLagi_Click(object sender, EventArgs e)
         {
             _isTraining = true;
+            _isDecide = false;
             btKiri.Enabled = true;
         }
 
@@ -916,39 +863,72 @@ namespace EmotivController
                 MessageBox.Show("Can't find Wheelchair! " + e);
             }
         }
-        private void sendCommand(int command)
+        private void sendCommand(int command, int command1)
         {
-            _myport.Write(command + "");
+            //_myport.Write(command + "");
             MethodInvoker action;
             switch (command)
             {
                 case 0:
                     action = delegate
-                    { tbArah.Text = "kiri"; };
+                    { tbArah.Text = "left"; };
                     tbArah.BeginInvoke(action);
                     break;
                 case 1:
                     action = delegate
-                    { tbArah.Text = "kanan"; };
+                    { tbArah.Text = "right"; };
                     tbArah.BeginInvoke(action);
                     break;
                 case 2:
                     action = delegate
-                    { tbArah.Text = "maju"; };
+                    { tbArah.Text = "forward"; };
                     tbArah.BeginInvoke(action);
                     break;
                 case 3:
                     action = delegate
-                    { tbArah.Text = "mundur"; };
+                    { tbArah.Text = "backward"; };
                     tbArah.BeginInvoke(action);
                     break;
                 case 4:
                     action = delegate
-                    { tbArah.Text = "berhenti"; };
+                    { tbArah.Text = "stop"; };
+                    tbArah.BeginInvoke(action);
+                    break;
+            }
+            switch (command1)
+            {
+                case 0:
+                    action = delegate
+                    { knnTb.Text = "left"; };
+                    tbArah.BeginInvoke(action);
+                    break;
+                case 1:
+                    action = delegate
+                    { knnTb.Text = "right"; };
+                    tbArah.BeginInvoke(action);
+                    break;
+                case 2:
+                    action = delegate
+                    { knnTb.Text = "forward"; };
+                    tbArah.BeginInvoke(action);
+                    break;
+                case 3:
+                    action = delegate
+                    { knnTb.Text = "backward"; };
+                    tbArah.BeginInvoke(action);
+                    break;
+                case 4:
+                    action = delegate
+                    { knnTb.Text = "stop"; };
                     tbArah.BeginInvoke(action);
                     break;
             }
 
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            sendCommand(4,4);
         }
     }
 }
