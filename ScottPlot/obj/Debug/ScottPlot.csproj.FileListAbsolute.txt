@@ -6,3 +6,11 @@ C:\Users\Frans\Documents\GitHub\EmotivController\ScottPlot\obj\Debug\ScottPlot.c
 C:\Users\Frans\Documents\GitHub\EmotivController\ScottPlot\obj\Debug\ScottPlot.csproj.CoreCompileInputs.cache
 C:\Users\Frans\Documents\GitHub\EmotivController\ScottPlot\obj\Debug\ScottPlot.dll
 C:\Users\Frans\Documents\GitHub\EmotivController\ScottPlot\obj\Debug\ScottPlot.pdb
+D:\GitHub\EmotivController\ScottPlot\bin\Debug\ScottPlot.dll
+D:\GitHub\EmotivController\ScottPlot\bin\Debug\ScottPlot.pdb
+D:\GitHub\EmotivController\ScottPlot\obj\Debug\ScottPlot.csprojAssemblyReference.cache
+D:\GitHub\EmotivController\ScottPlot\obj\Debug\ScottPlot.ScottPlotUC.resources
+D:\GitHub\EmotivController\ScottPlot\obj\Debug\ScottPlot.csproj.GenerateResource.cache
+D:\GitHub\EmotivController\ScottPlot\obj\Debug\ScottPlot.csproj.CoreCompileInputs.cache
+D:\GitHub\EmotivController\ScottPlot\obj\Debug\ScottPlot.dll
+D:\GitHub\EmotivController\ScottPlot\obj\Debug\ScottPlot.pdb

@@ -379,9 +379,6 @@ namespace EmotivController
             feature[3] = max(signal);
             feature[4] = standardDeviation(signal);
             feature[5] = median(signal);
-            //double[] feature = new double[2];
-            //feature[0] = max(signal);
-            //feature[1] = Array.IndexOf(signal, feature[0]) + 64;
             return feature;
         }
 
@@ -766,21 +763,18 @@ namespace EmotivController
 
         private void svm()
         {
-            var pair = loadOneFile();
+        var pair = loadOneFile();
             var inputs = pair.Item1;
             var outputs = pair.Item2;
             var teacher = new MulticlassSupportVectorLearning<Gaussian>()
             {
                 Learner = (param) => new SequentialMinimalOptimization<Gaussian>()
                 {
-                    UseKernelEstimation = false,
-                    //Complexity =1000,
-                    UseComplexityHeuristic = false,
-                    //Tolerance=1e-10
+                    Complexity =1000,
+                    Tolerance=1e-10
                 }
             };
 
-            teacher.ParallelOptions.MaxDegreeOfParallelism = 1;
             machine = teacher.Learn(inputs, outputs);
             int[] predicted = machine.Decide(inputs);
             double[] scores = machine.Score(inputs);
